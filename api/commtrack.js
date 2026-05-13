@@ -4,9 +4,15 @@ export default async function handler(req, res) {
 
     if (!scriptUrl) {
       return res.status(500).json({
-        error: "Missing SHEET_API_URL in Vercel environment variables",
+        stage: "env",
+        error: "SHEET_API_URL is missing in Vercel",
       });
     }
+
+    const maskedUrl = scriptUrl.replace(
+      /(https:\/\/script\.google\.com\/macros\/s\/).+?(\/exec)/,
+      "$1***$2"
+    );
 
     const response = await fetch(scriptUrl, {
       method: "GET",
@@ -15,21 +21,18 @@ export default async function handler(req, res) {
 
     const text = await response.text();
 
-    res.setHeader("Content-Type", "application/json");
-
-    if (!response.ok) {
-      return res.status(response.status).send(
-        JSON.stringify({
-          error: `Apps Script returned HTTP ${response.status}`,
-          body: text,
-        })
-      );
-    }
-
-    return res.status(200).send(text);
+    return res.status(200).json({
+      stage: "fetch",
+      maskedUrl,
+      upstreamStatus: response.status,
+      upstreamOk: response.ok,
+      bodyPreview: text.slice(0, 500),
+    });
   } catch (error) {
     return res.status(500).json({
+      stage: "catch",
       error: error?.message || String(error),
+      stack: error?.stack || "",
     });
   }
 }
