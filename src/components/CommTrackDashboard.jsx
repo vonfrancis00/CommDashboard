@@ -1,76 +1,67 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-} from "react";
-
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDebounce } from "use-debounce";
-
 import {
   Activity,
-  CalendarDays,
-  Clock3,
-  Filter,
   Search,
   RefreshCw,
-  Users,
   Inbox,
-  Layers3,
   ChevronRight,
-  ArrowUpRight,
   CheckCircle2,
   AlertCircle,
   Mail,
-  FileText,
   ThumbsUp,
   Calendar,
-  X,
+  LayoutGrid,
+  Clock,
+  ChevronLeft,
 } from "lucide-react";
-
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
 } from "recharts";
 
-const API_URL =
-  import.meta.env.VITE_SHEET_API_URL || "";
-
+const API_URL = import.meta.env.VITE_SHEET_API_URL || ""; // make sure this is your /exec URL
 const ROWS_PER_PAGE = 30;
 
-// --- DESIGN TOKENS ---
+// --- REFINED DESIGN TOKENS ---
 const cardStyle =
-  "group relative rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md";
+  "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
 
 // --- HELPERS ---
-
 function safe(value) {
-  if (value === null || value === undefined)
-    return "";
+  return value === null || value === undefined ? "" : String(value).trim();
+}
 
-  return String(value).trim();
+function cleanName(value) {
+  const text = safe(value);
+  let cleaned = text.replace(/\s*<[^>]*>\s*/g, "");
+  cleaned = cleaned.replace(/\s*\([^)]*@[^)]*\)\s*/g, "");
+
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) {
+    cleaned = cleaned.split("@")[0].replace(/[._]/g, " ");
+  }
+
+  return cleaned.trim();
 }
 
 function parseDate(value) {
   if (!value) return null;
-
   const date = new Date(String(value));
-
   return isNaN(date) ? null : date;
 }
 
 function formatDate(value) {
   const date = parseDate(value);
-
   if (!date) return safe(value);
-
   return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -78,146 +69,68 @@ function formatDate(value) {
   }).format(date);
 }
 
-function monthKey(value) {
-  const date = parseDate(value);
-
-  if (!date) return "Unknown";
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
-}
-
-// --- OPTIMIZED NORMALIZE ---
-
 function normalize(item = {}) {
-  const activity = safe(
-    item.Activity || item.activity
-  );
-
-  const refNumber = safe(
-    item["Ref number"] ||
-      item.refNumber ||
-      item.RefNumber
-  );
-
-  const receivedBy = safe(
-    item["Received By"] ||
-      item.receivedBy
-  );
-
-  const receivedFrom = safe(
-    item["Received From"] ||
-      item.receivedFrom
-  );
-
-  const subject = safe(
-    item.Subject || item.subject
-  );
-
-  const remarks = safe(
-    item.Remarks || item.remarks
-  );
-
-  const dateReceived =
-    item["Date Received"] ||
-    item.dateReceived;
-
-  const parsedDate = parseDate(
-    dateReceived
-  );
+  const activity = safe(item.Activity || item.activity);
+  const refNumber = safe(item["Ref number"] || item.refNumber || item.RefNumber);
+  const receivedFrom = cleanName(item["Received From"] || item.receivedFrom);
+  const subject = safe(item.Subject || item.subject);
+  const remarks = safe(item.Remarks || item.remarks);
+  const dateReceived = item["Date Received"] || item.dateReceived;
+  const parsedDate = parseDate(dateReceived);
 
   return {
     activity,
     refNumber,
-    receivedBy,
     receivedFrom,
     subject,
     remarks,
     dateReceived,
-
     parsedDate,
-
-    // PRECOMPUTED SEARCH
-    searchBlob: [
-      activity,
-      refNumber,
-      receivedBy,
-      receivedFrom,
-      subject,
-      remarks,
-    ]
+    searchBlob: [activity, refNumber, receivedFrom, subject, remarks]
       .join(" ")
       .toLowerCase(),
   };
 }
 
-// --- STATUS BADGE LOGIC ---
-
 const getStatusStyles = (status) => {
   const s = status?.toLowerCase() || "";
-
-  if (s === "pending")
-    return "bg-orange-50 text-orange-700 border-orange-200";
-
-  if (
-    s === "actioned" ||
-    s === "approved"
-  )
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
-
-  if (s === "for action")
-    return "bg-blue-50 text-blue-700 border-blue-200";
-
-  if (s === "invitations")
-    return "bg-purple-50 text-purple-700 border-purple-200";
-
-  if (s === "for info")
-    return "bg-slate-50 text-slate-700 border-slate-200";
-
-  return "bg-slate-50 text-slate-600 border-slate-100";
+  if (s === "pending") return "bg-orange-500/10 text-orange-600 border-orange-200/50";
+  if (s === "actioned" || s === "approved") return "bg-emerald-500/10 text-emerald-600 border-emerald-200/50";
+  if (s === "for action") return "bg-blue-500/10 text-blue-600 border-blue-200/50";
+  if (s === "invitations") return "bg-purple-500/10 text-purple-600 border-purple-200/50";
+  return "bg-slate-500/10 text-slate-600 border-slate-200/50";
 };
 
-// --- COMPONENTS ---
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  color,
-}) {
+// --- ENHANCED STAT CARD ---
+function ModernStatCard({ icon: Icon, label, value, hint, color }) {
   return (
     <div className={cardStyle}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {label}
-          </p>
-
-          <h2
-            className={`mt-2 text-3xl font-black leading-none ${
-              color || "text-slate-900"
-            }`}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ${color}`}
           >
+            <Icon className="h-5 w-5" />
+          </div>
+          <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+            <Activity className="h-3 w-3" /> Live
+          </span>
+        </div>
+
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
             {value}
           </h2>
-
-          <p className="mt-4 flex items-center text-xs font-medium text-slate-500">
-            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-slate-300"></span>
-            {hint}
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            {label}
           </p>
         </div>
 
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 transition-colors group-hover:bg-white`}
-        >
-          <Icon
-            className={`h-6 w-6 ${
-              color || "text-slate-600"
-            }`}
-          />
+        <div className="border-t border-slate-50 pt-4">
+          <p className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
+            <span className={`h-1.5 w-1.5 rounded-full ${color?.replace("text", "bg")}`} />
+            {hint}
+          </p>
         </div>
       </div>
     </div>
@@ -226,70 +139,41 @@ function StatCard({
 
 export default function CommTrackDashboard() {
   const [rows, setRows] = useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  // DEBOUNCED SEARCH
-
-  const [searchInput, setSearchInput] =
-    useState("");
-
-  const [search] = useDebounce(
-    searchInput,
-    300
-  );
-
-  const [startDate, setStartDate] =
-    useState("");
-
-  const [endDate, setEndDate] =
-    useState("");
-
-  const [remarkFilter, setRemarkFilter] =
-    useState("All");
-
-  const [error, setError] = useState("");
-
-  const [refresh, setRefresh] =
-    useState(0);
-
-  // PAGINATION
-
+  const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState("");
+  const [search] = useDebounce(searchInput, 300);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [remarkFilter, setRemarkFilter] = useState("All");
+  const [selectedYear, setSelectedYear] = useState("All");
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
-
-  // --- FETCH ---
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      setError("");
 
       if (!API_URL) {
-        throw new Error(
-          "Missing VITE_SHEET_API_URL"
-        );
+        console.error("Missing VITE_SHEET_API_URL");
+        setRows([]);
+        return;
       }
 
       const response = await fetch(API_URL, {
-        cache: "force-cache",
+        method: "GET",
+        cache: "no-store",
       });
 
       if (!response.ok) {
-        throw new Error(
-          "Failed to fetch data"
-        );
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-
-      const formatted = Array.isArray(data)
-        ? data.map(normalize)
-        : [];
-
-      setRows(formatted);
+      setRows(Array.isArray(data) ? data.map(normalize) : []);
     } catch (err) {
-      setError(err.message);
+      console.error("Failed to fetch data:", err);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -299,651 +183,380 @@ export default function CommTrackDashboard() {
     fetchData();
   }, [fetchData, refresh]);
 
-  // RESET PAGE WHEN FILTERING
-
   useEffect(() => {
     setPage(1);
-  }, [
-    search,
-    startDate,
-    endDate,
-    remarkFilter,
-  ]);
+  }, [search, startDate, endDate, remarkFilter, selectedYear]);
 
-  // REMARKS LIST
+  const toggleRow = (idx) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(idx)) newExpanded.delete(idx);
+    else newExpanded.add(idx);
+    setExpandedRows(newExpanded);
+  };
 
-  const remarksList = useMemo(
-    () => [
-      "All",
-      ...new Set(
-        rows
-          .map((r) => r.remarks)
-          .filter(Boolean)
-      ),
-    ],
-    [rows]
-  );
-
-  // OPTIMIZED FILTERING
+  const availableYears = useMemo(() => {
+    const years = rows.map((r) => r.parsedDate?.getFullYear()).filter(Boolean);
+    return ["All", ...new Set(years)].sort((a, b) => (b === "All" ? -1 : b - a));
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
     const q = search.toLowerCase();
-
-    const start = startDate
-      ? new Date(startDate).getTime()
-      : null;
-
-    const end = endDate
-      ? new Date(
-          endDate + "T23:59:59"
-        ).getTime()
-      : null;
+    const start = startDate ? new Date(startDate).getTime() : null;
+    const end = endDate ? new Date(endDate + "T23:59:59").getTime() : null;
 
     return rows
       .filter((row) => {
-        // SEARCH
-
-        if (
-          q &&
-          !row.searchBlob.includes(q)
-        ) {
-          return false;
-        }
-
-        // REMARKS
-
-        if (
-          remarkFilter !== "All" &&
-          row.remarks !== remarkFilter
-        ) {
-          return false;
-        }
-
-        // DATE
+        if (q && !row.searchBlob.includes(q)) return false;
+        if (remarkFilter !== "All" && row.remarks !== remarkFilter) return false;
 
         if (start || end) {
-          if (!row.parsedDate)
-            return false;
-
-          const time =
-            row.parsedDate.getTime();
-
-          if (start && time < start)
-            return false;
-
-          if (end && time > end)
-            return false;
+          if (!row.parsedDate) return false;
+          const time = row.parsedDate.getTime();
+          if (start && time < start) return false;
+          if (end && time > end) return false;
         }
 
         return true;
       })
-      .sort((a, b) => {
-        return (
-          (b.parsedDate?.getTime() ||
-            0) -
-          (a.parsedDate?.getTime() ||
-            0)
-        );
-      });
-  }, [
-    rows,
-    search,
-    startDate,
-    endDate,
-    remarkFilter,
-  ]);
-
-  // PAGINATION
+      .sort((a, b) => (b.parsedDate?.getTime() || 0) - (a.parsedDate?.getTime() || 0));
+  }, [rows, search, startDate, endDate, remarkFilter]);
 
   const paginatedRows = useMemo(() => {
-    const start =
-      (page - 1) * ROWS_PER_PAGE;
-
-    return filteredRows.slice(
-      start,
-      start + ROWS_PER_PAGE
-    );
+    const start = (page - 1) * ROWS_PER_PAGE;
+    return filteredRows.slice(start, start + ROWS_PER_PAGE);
   }, [filteredRows, page]);
 
-  // STATS
+  const { chartData, statusData, stats } = useMemo(() => {
+    const monthMap = new Map();
+    const statusMap = new Map();
+    const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  const stats = useMemo(() => {
-    const countByRemark = (val) =>
-      rows.filter(
-        (r) =>
-          r.remarks?.toLowerCase() ===
-          val.toLowerCase()
-      ).length;
+    const chartFilteredRows =
+      selectedYear === "All"
+        ? rows
+        : rows.filter((r) => r.parsedDate?.getFullYear().toString() === selectedYear);
 
-    const latest = [...rows]
-      .filter((r) => r.parsedDate)
-      .sort(
-        (a, b) =>
-          b.parsedDate - a.parsedDate
-      )[0];
+    chartFilteredRows.forEach((row) => {
+      const mKey = row.parsedDate
+        ? row.parsedDate.toLocaleDateString("en-US", { month: "short" })
+        : "N/A";
+      monthMap.set(mKey, (monthMap.get(mKey) || 0) + 1);
 
-    return {
-      total: rows.length,
-      pending: countByRemark(
-        "Pending"
-      ),
-      forAction: countByRemark(
-        "For Action"
-      ),
-      invitations: countByRemark(
-        "Invitations"
-      ),
-      forInfo: countByRemark(
-        "For Info"
-      ),
-      approved: countByRemark(
-        "Approved"
-      ),
-      actioned: countByRemark(
-        "Actioned"
-      ),
-      latest: latest
-        ? formatDate(
-            latest.dateReceived
-          )
-        : "—",
-    };
-  }, [rows]);
-
-  // CHART DATA
-
-  const chartData = useMemo(() => {
-    const map = new Map();
-
-    rows.forEach((row) => {
-      const key = monthKey(
-        row.dateReceived
-      );
-
-      map.set(
-        key,
-        (map.get(key) || 0) + 1
-      );
+      const sKey = row.remarks || "No Remark";
+      statusMap.set(sKey, (statusMap.get(sKey) || 0) + 1);
     });
 
-    return Array.from(map.entries()).map(
-      ([month, count]) => ({
-        month,
-        count,
-      })
-    );
-  }, [rows]);
+    const getC = (v) => rows.filter((r) => r.remarks?.toLowerCase() === v.toLowerCase()).length;
+
+    return {
+      chartData: monthOrder.map((m) => ({ month: m, count: monthMap.get(m) || 0 })),
+      statusData: Array.from(statusMap.entries()).map(([name, value]) => ({ name, value })),
+      stats: {
+        pending: getC("Pending"),
+        forAction: getC("For Action"),
+        invitations: getC("Invitations"),
+        forInfo: getC("For Info"),
+        approved: getC("Approved"),
+        actioned: getC("Actioned"),
+      },
+    };
+  }, [rows, selectedYear]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-700">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        {/* HEADER SECTION */}
-
-        <header className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-bold text-indigo-600 shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-
-              Live Sync Active
-            </div>
-
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 lg:text-5xl">
-              Communication{" "}
-              <span className="text-slate-400">
-                Dashboard
-              </span>
-            </h1>
+    <div className="relative z-10 mx-auto max-w-[1400px] px-8 py-12">
+      {/* Header */}
+      <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-600/5 px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-indigo-600">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
+            </span>
+            System Live
           </div>
-
-          <button
-            onClick={() =>
-              setRefresh((p) => p + 1)
-            }
-            disabled={loading}
-            className="group flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-4 text-sm font-bold text-white transition-all hover:bg-indigo-600 active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 transition-transform ${
-                loading
-                  ? "animate-spin"
-                  : ""
-              }`}
-            />
-
-            Sync Database
-          </button>
-        </header>
-
-        {/* STATUS GRID */}
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
-          <StatCard
-            icon={AlertCircle}
-            label="Pending"
-            value={stats.pending}
-            hint="In Queue"
-            color="text-orange-500"
-          />
-
-          <StatCard
-            icon={Activity}
-            label="For Action"
-            value={stats.forAction}
-            hint="Assigned"
-            color="text-blue-500"
-          />
-
-          <StatCard
-            icon={Mail}
-            label="Invitations"
-            value={stats.invitations}
-            hint="Events"
-            color="text-purple-500"
-          />
-
-          <StatCard
-            icon={Inbox}
-            label="For Info"
-            value={stats.forInfo}
-            hint="Reference"
-            color="text-slate-500"
-          />
-
-          <StatCard
-            icon={ThumbsUp}
-            label="Approved"
-            value={stats.approved}
-            hint="Confirmed"
-            color="text-emerald-500"
-          />
-
-          <StatCard
-            icon={CheckCircle2}
-            label="Actioned"
-            value={stats.actioned}
-            hint="Completed"
-            color="text-emerald-700"
-          />
+          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
+            Communication <span className="font-bold italic text-slate-400">Hub</span>
+          </h1>
         </div>
 
-        {/* CHART */}
+        <button
+          onClick={() => setRefresh((r) => r + 1)}
+          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh Data
+        </button>
+      </div>
 
-        <div className="mt-8 grid gap-8 xl:grid-cols-3">
-          <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm xl:col-span-2">
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black">
-                  Engagement Over Time
-                </h2>
+      {/* Stats Grid */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <ModernStatCard icon={AlertCircle} label="Pending" value={stats.pending} hint="Requires Attention" color="text-orange-500" />
+        <ModernStatCard icon={Activity} label="For Action" value={stats.forAction} hint="Active Workflow" color="text-blue-500" />
+        <ModernStatCard icon={Mail} label="Invitations" value={stats.invitations} hint="Events & Meetings" color="text-purple-500" />
+        <ModernStatCard icon={Inbox} label="For Info" value={stats.forInfo} hint="Knowledge Base" color="text-slate-500" />
+        <ModernStatCard icon={ThumbsUp} label="Approved" value={stats.approved} hint="Finalized Records" color="text-emerald-500" />
+        <ModernStatCard icon={CheckCircle2} label="Actioned" value={stats.actioned} hint="Archived/Closed" color="text-emerald-700" />
+      </div>
 
-                <p className="text-sm font-medium text-slate-400">
-                  Monthly breakdown of
-                  received communications
-                </p>
-              </div>
+      {/* Charts Row */}
+      <div className="mb-12 grid gap-6 lg:grid-cols-3">
+        <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md lg:col-span-2">
+          <div className="mb-8 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-lg font-bold">
+              <Clock className="h-5 w-5 text-indigo-500" /> Volume Trends
+            </h3>
 
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
-                <Activity className="h-5 w-5" />
-              </div>
-            </div>
-
-            <div className="h-72">
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-              >
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient
-                      id="colorCount"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="#6366f1"
-                        stopOpacity={0.1}
-                      />
-
-                      <stop
-                        offset="95%"
-                        stopColor="#6366f1"
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#f1f5f9"
-                  />
-
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                  />
-
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                  />
-
-                  <Tooltip />
-
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    stroke="#6366f1"
-                    strokeWidth={4}
-                    fillOpacity={1}
-                    fill="url(#colorCount)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 outline-none"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y === "All" ? "All Years" : y}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 shadow-sm flex-1">
-              <h2 className="text-xl font-black mb-6">
-                Overview
+          <div className="h-[280px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="8 8" vertical={false} stroke="#e2e8f0" />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fontWeight: 600, fill: "#94a3b8" }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fontWeight: 600, fill: "#94a3b8" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "16px",
+                    border: "none",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                  }}
+                />
+                <Area
+                  type="natural"
+                  dataKey="count"
+                  stroke="#6366f1"
+                  strokeWidth={3}
+                  fill="url(#areaGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md">
+          <h3 className="mb-8 flex items-center gap-2 text-lg font-bold">
+            <LayoutGrid className="h-5 w-5 text-slate-400" /> Mix
+          </h3>
+
+          <div className="h-[280px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <BarChart data={statusData}>
+                <XAxis dataKey="name" hide />
+                <Tooltip cursor={{ fill: "transparent" }} />
+                <Bar dataKey="value" radius={[10, 10, 10, 10]} barSize={40}>
+                  {statusData.map((_, i) => (
+                    <Cell key={i} fill={i % 2 === 0 ? "#6366f1" : "#cbd5e1"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Explorer Table */}
+      <div className="flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
+        <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-8">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                Data Explorer
               </h2>
-
-              <div className="space-y-4">
-                <div className="rounded-3xl bg-slate-50 p-6">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Total Records
-                  </p>
-
-                  <h2 className="mt-1 text-4xl font-black">
-                    {stats.total}
-                  </h2>
-                </div>
-
-                <div className="rounded-3xl bg-indigo-600 p-6 text-white">
-                  <p className="text-xs font-bold uppercase tracking-widest opacity-70">
-                    Search Results
-                  </p>
-
-                  <h2 className="mt-1 text-4xl font-black">
-                    {
-                      filteredRows.length
-                    }
-                  </h2>
-                </div>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
+                <p className="text-sm font-bold text-slate-400">
+                  {filteredRows.length} entries analyzed
+                </p>
               </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="group relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search anything..."
+                  className="w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
+                <Calendar className="h-4 w-4 text-indigo-500" />
+                <input
+                  type="date"
+                  className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <span className="px-1 font-light text-slate-300">|</span>
+                <input
+                  type="date"
+                  className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+
+              <select
+                className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
+                value={remarkFilter}
+                onChange={(e) => setRemarkFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                {[...new Set(rows.map((r) => r.remarks))]
+                  .filter(Boolean)
+                  .map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
         </div>
 
-        {/* TABLE */}
+        <div className="max-h-[80vh] overflow-y-auto overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0">
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-white/95 backdrop-blur-md">
+                <th className="border-b border-slate-100 px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  Reference
+                </th>
+                <th className="border-b border-slate-100 px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  Recipient
+                </th>
+                <th className="border-b border-slate-100 px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  Timestamp
+                </th>
+                <th className="border-b border-slate-100 px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                  Details
+                </th>
+              </tr>
+            </thead>
 
-        <div className="mt-8 overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-sm transition-all duration-300">
-          {/* FILTERS */}
-
-          <div className="border-b border-slate-100 bg-slate-50/30 p-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight text-slate-900">
-                  Data Explorer
-                </h2>
-
-                <p className="text-sm font-medium text-slate-400">
-                  Search, filter and
-                  audit all incoming
-                  records
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3 lg:min-w-[700px] justify-end">
-                {/* SEARCH */}
-
-                <div className="relative group flex-1 min-w-[200px]">
-                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                  <input
-                    type="text"
-                    placeholder="Search entries..."
-                    value={searchInput}
-                    onChange={(e) =>
-                      setSearchInput(
-                        e.target.value
-                      )
-                    }
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm font-medium outline-none shadow-sm"
-                  />
-                </div>
-
-                {/* DATES */}
-
-                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-                  <div className="flex items-center px-2 text-slate-400">
-                    <Calendar className="h-4 w-4" />
-                  </div>
-
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) =>
-                      setStartDate(
-                        e.target.value
-                      )
-                    }
-                    className="bg-transparent text-xs font-bold text-slate-700 outline-none"
-                  />
-
-                  <span className="text-slate-300 font-bold text-[10px] uppercase">
-                    to
-                  </span>
-
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) =>
-                      setEndDate(
-                        e.target.value
-                      )
-                    }
-                    className="bg-transparent text-xs font-bold text-slate-700 outline-none"
-                  />
-
-                  {(startDate ||
-                    endDate) && (
-                    <button
-                      onClick={() => {
-                        setStartDate("");
-                        setEndDate("");
-                      }}
-                      className="ml-1 flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-500"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* FILTER */}
-
-                <div className="relative min-w-[180px]">
-                  <Filter className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
-
-                  <select
-                    value={remarkFilter}
-                    onChange={(e) =>
-                      setRemarkFilter(
-                        e.target.value
-                      )
-                    }
-                    className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-10 text-sm font-bold text-slate-700 outline-none shadow-sm"
-                  >
-                    {remarksList.map(
-                      (item) => (
-                        <option
-                          key={item}
-                          value={item}
-                        >
-                          {item ===
-                          "All"
-                            ? "All Remarks"
-                            : item}
-                        </option>
-                      )
-                    )}
-                  </select>
-
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
-                    <ChevronRight className="h-4 w-4 rotate-90" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* TABLE */}
-
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto border-t border-slate-100">
-            <table className="w-full text-left text-sm border-separate border-spacing-0">
-              <thead className="sticky top-0 z-10 bg-white shadow-sm">
+            <tbody className="divide-y divide-slate-50">
+              {loading ? (
                 <tr>
-                  <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 text-center">
-                    Ref Number
-                  </th>
-
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                    Received By
-                  </th>
-
-                  <th className="px-6 py-5 text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                    Date Received
-                  </th>
-
-                  <th className="px-8 py-5 text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 text-center">
-                    Subject
-                  </th>
+                  <td
+                    colSpan={4}
+                    className="py-32 text-center font-black italic text-slate-200 animate-pulse"
+                  >
+                    Synchronizing...
+                  </td>
                 </tr>
-              </thead>
+              ) : (
+                paginatedRows.map((row, idx) => {
+                  const isExpanded = expandedRows.has(idx);
 
-              <tbody className="divide-y divide-slate-50">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-8 py-32 text-center font-bold text-slate-400 animate-pulse"
-                    >
-                      Syncing
-                      Database...
-                    </td>
-                  </tr>
-                ) : filteredRows.length ===
-                  0 ? (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-8 py-32 text-center font-bold text-slate-400"
-                    >
-                      No records found.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedRows.map(
-                    (row, index) => (
-                      <tr
-                        key={index}
-                        className="group hover:bg-indigo-50/30 transition-all duration-200"
-                      >
-                        <td className="px-8 py-6">
-                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 font-mono text-[11px] font-bold text-slate-600 border border-slate-200/50">
-                            {row.refNumber ||
-                              "N/A"}
+                  return (
+                    <tr key={idx} className="group transition-all duration-200 hover:bg-slate-50/50">
+                      <td className="relative px-8 py-6 align-top">
+                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100" />
+                        <span className="font-mono text-[10px] font-bold text-slate-400">
+                          {row.refNumber || "---"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-6 align-top font-bold text-slate-900">
+                        {row.receivedFrom || "---"}
+                      </td>
+
+                      <td className="px-6 py-6 align-top">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-700">
+                            {formatDate(row.dateReceived).split(",")[0]}
                           </span>
-                        </td>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {formatDate(row.dateReceived).split(",")[1]}
+                          </span>
+                        </div>
+                      </td>
 
-                        <td className="px-6 py-6 font-bold text-slate-900">
-                          {
-                            row.receivedBy
-                          }
-                        </td>
+                      <td className="px-8 py-6 align-top">
+                        <div
+                          className="flex cursor-pointer flex-col gap-2.5"
+                          onClick={() => toggleRow(idx)}
+                        >
+                          <p
+                            className={`text-[15px] font-bold leading-snug text-slate-800 ${
+                              isExpanded ? "" : "line-clamp-2"
+                            }`}
+                          >
+                            {row.subject}
+                          </p>
 
-                        <td className="px-6 py-6 text-slate-500 font-medium">
-                          {formatDate(
-                            row.dateReceived
-                          )}
-                        </td>
-
-                        <td className="px-8 py-6">
-                          <div className="flex flex-col gap-1.5">
-                            <span className="font-semibold text-slate-700 truncate max-w-md">
-                              {row.subject ||
-                                "No Subject"}
+                          {row.remarks && (
+                            <span
+                              className={`w-fit rounded-lg border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-sm ${getStatusStyles(
+                                row.remarks
+                              )}`}
+                            >
+                              {row.remarks}
                             </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                            {row.remarks && (
-                              <span
-                                className={`inline-flex w-fit px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getStatusStyles(
-                                  row.remarks
-                                )}`}
-                              >
-                                {
-                                  row.remarks
-                                }
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  )
-                )}
-              </tbody>
-            </table>
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 p-8">
+          <div className="flex h-10 w-24 items-center justify-center rounded-xl border border-slate-200 bg-white font-black text-slate-900 shadow-sm">
+            {page} <span className="mx-2 font-light text-slate-300">/</span> {totalPages}
           </div>
 
-          {/* PAGINATION */}
+          <div className="flex gap-2">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 shadow-sm disabled:opacity-20"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
 
-          <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
-            <p className="text-sm text-slate-500">
-              Showing{" "}
-              {
-                paginatedRows.length
-              }{" "}
-              of{" "}
-              {
-                filteredRows.length
-              }
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() =>
-                  setPage((p) => p - 1)
-                }
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm disabled:opacity-40"
-              >
-                Prev
-              </button>
-
-              <button
-                disabled={
-                  page *
-                    ROWS_PER_PAGE >=
-                  filteredRows.length
-                }
-                onClick={() =>
-                  setPage((p) => p + 1)
-                }
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg disabled:opacity-20"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
