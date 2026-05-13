@@ -28,7 +28,7 @@ import {
   Cell,
 } from "recharts";
 
-const API_URL = import.meta.env.VITE_SHEET_API_URL || ""; // make sure this is your /exec URL
+const API_URL = "/api/commtrack"; // make sure this is your /exec URL
 const ROWS_PER_PAGE = 30;
 
 // --- REFINED DESIGN TOKENS ---
