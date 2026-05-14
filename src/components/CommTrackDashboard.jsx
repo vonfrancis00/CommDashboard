@@ -28,7 +28,8 @@ import {
   Cell,
 } from "recharts";
 
-const API_URL = "/api/commtrack"; // make sure this is your /exec URL
+const API_URL =
+  "https://script.google.com/macros/s/AKfycby7muk7py-wuAnlAVktSogeejD6O-kjYVM2uR7_xalJp7fGCAA6zfu0I0hLqydfBySICw/exec";
 const ROWS_PER_PAGE = 30;
 
 // --- REFINED DESIGN TOKENS ---
@@ -161,16 +162,24 @@ export default function CommTrackDashboard() {
       }
 
       const response = await fetch(API_URL, {
-        method: "GET",
-        cache: "no-store",
-      });
+  method: "GET",
+  cache: "no-store",
+});
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`);
-      }
+const text = await response.text();
 
-      const data = await response.json();
-      setRows(Array.isArray(data) ? data.map(normalize) : []);
+if (!response.ok) {
+  throw new Error(`HTTP ${response.status} ${response.statusText}: ${text}`);
+}
+
+let data;
+try {
+  data = JSON.parse(text);
+} catch (err) {
+  throw new Error(`Invalid JSON returned by API: ${text}`);
+}
+
+setRows(Array.isArray(data) ? data.map(normalize) : []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
       setRows([]);
