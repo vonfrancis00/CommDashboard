@@ -6,8 +6,10 @@ import {
   Clock3,
   RefreshCw,
   Inbox,
-  ArrowUpRight,
   AlertCircle,
+  MoreHorizontal,
+  ChevronRight,
+  Calendar
 } from "lucide-react";
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzKVZ-0_LlN4Ryjc3Rjsmlo4s4ub2zUuQgqjQfSEaJfHHFEe6smMNTPnNnL0hoZ7Cjy3A/exec";
@@ -38,177 +40,187 @@ export default function Replies() {
     fetchReplies();
   }, []);
 
-  // --- Data Normalization Helpers ---
-  const getSubject = (i) => i?.Subject || i?.subject || i?.SubjectLine || i?.Title || "Untitled Communication";
-  const getSender = (i) => i?.Sender || i?.sender || i?.From || i?.Name || "Anonymous";
-  const getEmail = (i) => i?.Email || i?.email || i?.FromEmail || "";
+  // --- Normalization Helpers ---
+  const getSubject = (i) => i?.Subject || i?.subject || i?.Title || "Untitled Communication";
+  const getSender = (i) => i?.Sender || i?.From || i?.Name || "Anonymous";
   const getMessage = (i) => i?.Message || i?.message || i?.Body || "";
-  const getTimeRaw = (i) => i?.Time || i?.time || i?.Timestamp || i?.["Created At"] || "";
+  const getTimeRaw = (i) => i?.Time || i?.time || i?.Timestamp || "";
   
-  const getDisplayTime = (item) => {
-    const rawTime = getTimeRaw(item);
-    if (!rawTime) return "Recently";
-    const date = new Date(rawTime);
-    return !isNaN(date.getTime()) 
-      ? date.toLocaleString("en-PH", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) 
-      : String(rawTime);
-  };
-
   const getType = (item) => {
-    const raw = String(item?.Type || item?.type || item?.Category || "").toLowerCase();
+    const raw = String(item?.Type || item?.type || "").toLowerCase();
     return (raw.includes("forward") || raw.includes("fwd")) ? "forward" : "reply";
   };
 
-  // --- Logic Filtering ---
-  const latestUniqueData = useMemo(() => {
-    if (!data.length) return [];
+  const getGroupDate = (dateStr) => {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "Recent";
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return "Today";
+    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return date.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const processedData = useMemo(() => {
+    if (!data.length) return {};
     const sorted = [...data].sort((a, b) => new Date(getTimeRaw(b)).getTime() - new Date(getTimeRaw(a)).getTime());
+    
+    // Logic to keep the list clean (Unique subjects)
     const seen = new Set();
-    return sorted.filter(item => {
+    const unique = sorted.filter(item => {
       const key = String(getSubject(item)).toLowerCase().trim().replace(/^(re|fwd|fw)\s*:\s*/gi, "");
       return seen.has(key) ? false : seen.add(key);
     });
-  }, [data]);
 
-  const filteredData = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return latestUniqueData;
-    return latestUniqueData.filter(item => 
+    const filtered = q ? unique.filter(item => 
       [getSubject(item), getSender(item), getMessage(item)].some(f => String(f).toLowerCase().includes(q))
-    );
-  }, [latestUniqueData, search]);
+    ) : unique;
+
+    return filtered.reduce((groups, item) => {
+      const date = getGroupDate(getTimeRaw(item));
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(item);
+      return groups;
+    }, {});
+  }, [data, search]);
 
   return (
     <div className="flex-1 min-h-screen bg-[#F8FAFC]">
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/70 backdrop-blur-xl">
-        <div className="flex flex-col gap-4 px-8 py-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Notifications</h1>
-            <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.2em] mt-1">
-              Communication Hub & Archives
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search communications..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-11 w-full md:w-72 rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all"
-              />
+      {/* Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200/60 bg-white/70 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto px-8 py-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
+                <Inbox className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 leading-none">Replies & Forwards</h1>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                    {data.length} threads synced
+                  </p>
+                </div>
+              </div>
             </div>
-            <button
-              onClick={fetchReplies}
-              disabled={loading}
-              className="flex h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-bold text-white shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 disabled:opacity-50 transition-all"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Sync</span>
-            </button>
+            
+            <div className="flex items-center gap-3">
+              <div className="relative group flex-1 md:flex-none">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Filter by subject or sender..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-11 w-full md:w-72 rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none"
+                />
+              </div>
+              <button
+                onClick={fetchReplies}
+                className="p-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-indigo-600 transition-all active:scale-95 shadow-sm"
+              >
+                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Content Area */}
-      <div className="mx-auto max-w-6xl p-8">
+      <main className="max-w-6xl mx-auto px-8 py-10">
         {loading ? (
-          <div className="flex h-80 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="h-12 w-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
-            <p className="mt-4 text-sm font-bold text-slate-500">Updating communication logs...</p>
+          <div className="space-y-4">
+            {[1, 2, 3].map((n) => <div key={n} className="h-24 w-full rounded-2xl bg-slate-100 animate-pulse" />)}
           </div>
         ) : error ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-600 shadow-sm">
-            <AlertCircle className="h-5 w-5" />
-            {error}
-          </div>
-        ) : filteredData.length === 0 ? (
-          <div className="flex h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/50">
-            <div className="rounded-2xl bg-slate-100 p-4">
-              <Inbox className="h-8 w-8 text-slate-400" />
-            </div>
-            <p className="mt-4 text-sm font-bold text-slate-500 text-center">
-              No conversations found.<br/>
-              <span className="font-medium text-slate-400">Try adjusting your filters.</span>
-            </p>
+          <div className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/50 p-5 text-sm font-bold text-rose-600">
+            <AlertCircle className="h-5 w-5" /> {error}
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredData.map((item, index) => {
-              const type = getType(item);
-              const isForward = type === "forward";
-
-              return (
-                <div
-                  key={index}
-                  className="group relative flex flex-col sm:flex-row sm:items-center gap-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 transition-all duration-300 hover:border-indigo-300 hover:shadow-[0_20px_50px_rgba(79,70,229,0.08)] hover:-translate-y-0.5"
-                >
-                  <div className={`absolute left-0 top-0 h-full w-1.5 transition-all ${
-                    isForward ? "bg-amber-400" : "bg-indigo-600"
-                  }`} />
-                  
-                  <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl transition-all duration-300 shadow-inner ${
-                    isForward 
-                      ? "bg-amber-50 text-amber-600 group-hover:bg-amber-100" 
-                      : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
-                  }`}>
-                    {isForward ? <Forward className="h-7 w-7" /> : <ReplyAll className="h-7 w-7" />}
+          <div className="space-y-12">
+            {Object.entries(processedData).map(([date, items]) => (
+              <section key={date} className="relative">
+                <div className="sticky top-[108px] z-30 flex items-center gap-4 py-2 bg-[#F8FAFC]/90 backdrop-blur-sm mb-6">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm">
+                    <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">{date}</span>
                   </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-3 mb-1.5">
-                      <h2 className="text-[17px] font-extrabold text-slate-800 tracking-tight truncate group-hover:text-indigo-900 transition-colors">
-                        {getSubject(item)}
-                      </h2>
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border ${
-                        isForward 
-                          ? "bg-amber-50 text-amber-700 border-amber-200" 
-                          : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                      }`}>
-                        {type}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                        <span className="font-bold text-slate-700">{getSender(item)}</span>
-                        <span className="text-slate-300 hidden sm:inline">•</span>
-                        <span className="text-slate-400 font-medium truncate max-w-[250px]">{getEmail(item)}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                          <Clock3 className="h-3.5 w-3.5" />
-                          {getDisplayTime(item)}
-                        </div>
-                        
-                        {getMessage(item) && (
-                          <p className="text-[13px] text-slate-500 italic truncate hidden md:block">
-                            "{getMessage(item).substring(0, 80)}..."
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex justify-end">
-                    <button
-                      onClick={() => window.open(item.Link || item.link, "_blank", "noopener,noreferrer")}
-                      className="group/btn relative flex items-center gap-2 overflow-hidden rounded-xl bg-white border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-900 hover:text-white hover:border-slate-900 active:scale-95"
-                    >
-                      <span className="relative z-10">Open Thread</span>
-                      <ArrowUpRight className="relative z-10 h-4 w-4 transition-transform group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1" />
-                    </button>
-                  </div>
+                  <div className="h-[1px] flex-1 bg-slate-200" />
                 </div>
-              );
-            })}
+
+                <div className="space-y-3">
+                  {items.map((item, idx) => {
+                    const isFwd = getType(item) === "forward";
+                    
+                    return (
+                      <div
+                        key={idx}
+                        className="group bg-white border border-slate-200/70 rounded-2xl p-4 flex items-center gap-5 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-200 hover:-translate-y-0.5"
+                      >
+                        <div className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
+                          isFwd ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600"
+                        }`}>
+                          {isFwd ? <Forward className="h-5 w-5" /> : <ReplyAll className="h-5 w-5" />}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${isFwd ? 'text-amber-600' : 'text-indigo-600'}`}>
+                              {getType(item)}
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <div className="flex items-center gap-1.5 text-slate-400 font-bold text-[11px]">
+                              <Clock3 className="h-3 w-3" />
+                              {new Date(getTimeRaw(item)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                          
+                          <h2 className="text-[15px] font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                            {getSubject(item)}
+                          </h2>
+                          
+                          <div className="flex items-center gap-2 mt-1">
+                            {/* CLEANED SENDER AREA: Email address removed */}
+                            <span className="text-sm font-bold text-slate-700">
+                              {getSender(item)}
+                            </span>
+                            
+                            {/* Added Message Preview logic for a more "Elevated" feel */}
+                            {getMessage(item) && (
+                              <>
+                                <span className="text-slate-300">·</span>
+                                <p className="text-xs font-medium text-slate-400 truncate max-w-[400px]">
+                                  {getMessage(item)}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
+                           <button
+                             onClick={() => window.open(item.Link || item.link, "_blank")}
+                             className="h-10 px-4 flex items-center gap-2 rounded-xl bg-slate-50 text-slate-600 font-bold text-xs hover:bg-indigo-600 hover:text-white transition-all group/btn shadow-sm"
+                           >
+                             View Thread
+                             <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+                           </button>
+                           <button className="h-10 w-10 flex items-center justify-center rounded-xl text-slate-300 hover:bg-slate-50 hover:text-slate-600 transition-colors">
+                              <MoreHorizontal className="h-5 w-5" />
+                           </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

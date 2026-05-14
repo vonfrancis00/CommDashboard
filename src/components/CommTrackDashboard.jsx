@@ -29,7 +29,7 @@ import {
 } from "recharts";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycby7muk7py-wuAnlAVktSogeejD6O-kjYVM2uR7_xalJp7fGCAA6zfu0I0hLqydfBySICw/exec";
+  "https://script.google.com/macros/s/AKfycbxr95Fg-mKtFgOmLcn0fHNFTh8fUXTpcvpBLTJ6CnwNowtsfl1yYIJJMvRT9Hb8UkQ13w/exec";
 
 const ROWS_PER_PAGE = 30;
 const AUTO_REFRESH_MS = 15000;
@@ -347,7 +347,7 @@ export default function CommTrackDashboard() {
         <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md lg:col-span-2">
           <div className="mb-8 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-lg font-bold">
-              <Clock className="h-5 w-5 text-indigo-500" /> Volume Trends
+              <Clock className="h-5 w-5 text-indigo-500" /> Volume Over Time
             </h3>
 
             <select
@@ -406,7 +406,7 @@ export default function CommTrackDashboard() {
 
         <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md">
           <h3 className="mb-8 flex items-center gap-2 text-lg font-bold">
-            <LayoutGrid className="h-5 w-5 text-slate-400" /> Mix
+            <LayoutGrid className="h-5 w-5 text-slate-400" /> Status Distribution
           </h3>
 
           <div className="h-[280px] w-full min-w-0">
@@ -441,49 +441,68 @@ export default function CommTrackDashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="group relative">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search anything..."
-                  className="w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                />
-              </div>
+  <div className="group relative">
+    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <input
+      type="text"
+      placeholder="Search anything..."
+      className="w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
+      value={searchInput}
+      onChange={(e) => setSearchInput(e.target.value)}
+    />
+  </div>
 
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
-                <Calendar className="h-4 w-4 text-indigo-500" />
-                <input
-                  type="date"
-                  className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <span className="px-1 font-light text-slate-300">|</span>
-                <input
-                  type="date"
-                  className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
+  {/* DATE FILTER */}
+  <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
+    <Calendar className="h-4 w-4 text-indigo-500" />
 
-              <select
-                className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
-                value={remarkFilter}
-                onChange={(e) => setRemarkFilter(e.target.value)}
-              >
-                <option value="All">All Statuses</option>
-                {[...new Set(rows.map((r) => r.remarks))]
-                  .filter(Boolean)
-                  .map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-              </select>
-            </div>
+    <input
+      type="date"
+      className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
+      value={startDate}
+      onChange={(e) => setStartDate(e.target.value)}
+    />
+
+    <span className="px-1 font-light text-slate-300">|</span>
+
+    <input
+      type="date"
+      className="bg-transparent text-[11px] font-black uppercase text-slate-600 outline-none"
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+    />
+
+    {/* CLEAR BUTTON */}
+    {(startDate || endDate) && (
+      <button
+        onClick={() => {
+          setStartDate("");
+          setEndDate("");
+        }}
+        className="ml-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-red-100 hover:text-red-600"
+        title="Clear date filter"
+      >
+        ✕
+      </button>
+    )}
+  </div>
+
+  <select
+    className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
+    value={remarkFilter}
+    onChange={(e) => setRemarkFilter(e.target.value)}
+  >
+    <option value="All">All Statuses</option>
+
+    {[...new Set(rows.map((r) => r.remarks))]
+      .filter(Boolean)
+      .map((r) => (
+        <option key={r} value={r}>
+          {r}
+        </option>
+      ))}
+  </select>
+</div>
           </div>
         </div>
 
