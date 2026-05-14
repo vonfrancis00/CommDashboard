@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useDebounce } from "use-debounce";
 import {
   Activity,
@@ -30,13 +30,13 @@ import {
 
 const API_URL =
   "https://script.google.com/macros/s/AKfycby7muk7py-wuAnlAVktSogeejD6O-kjYVM2uR7_xalJp7fGCAA6zfu0I0hLqydfBySICw/exec";
-const ROWS_PER_PAGE = 30;
 
-// --- REFINED DESIGN TOKENS ---
+const ROWS_PER_PAGE = 30;
+const AUTO_REFRESH_MS = 15000;
+
 const cardStyle =
   "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
 
-// --- HELPERS ---
 function safe(value) {
   return value === null || value === undefined ? "" : String(value).trim();
 }
@@ -93,6 +93,21 @@ function normalize(item = {}) {
   };
 }
 
+function buildSignature(dataArray) {
+  // A compact fingerprint of the data to detect real changes
+  return dataArray
+    .map((item) =>
+      [
+        safe(item["Ref number"] || item.refNumber || item.RefNumber),
+        safe(item["Received From"] || item.receivedFrom),
+        safe(item.Subject || item.subject),
+        safe(item.Remarks || item.remarks),
+        safe(item["Date Received"] || item.dateReceived),
+      ].join("||")
+    )
+    .join("##");
+}
+
 const getStatusStyles = (status) => {
   const s = status?.toLowerCase() || "";
   if (s === "pending") return "bg-orange-500/10 text-orange-600 border-orange-200/50";
@@ -102,7 +117,6 @@ const getStatusStyles = (status) => {
   return "bg-slate-500/10 text-slate-600 border-slate-200/50";
 };
 
-// --- ENHANCED STAT CARD ---
 function ModernStatCard({ icon: Icon, label, value, hint, color }) {
   return (
     <div className={cardStyle}>
@@ -141,6 +155,7 @@ function ModernStatCard({ icon: Icon, label, value, hint, color }) {
 export default function CommTrackDashboard() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search] = useDebounce(searchInput, 300);
   const [startDate, setStartDate] = useState("");
@@ -151,45 +166,62 @@ export default function CommTrackDashboard() {
   const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
 
-  const fetchData = useCallback(async () => {
+  const lastSignatureRef = useRef("");
+
+  const fetchData = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+      else setIsRefreshing(true);
 
       if (!API_URL) {
-        console.error("Missing VITE_SHEET_API_URL");
+        console.error("Missing API URL");
         setRows([]);
         return;
       }
 
-      const response = await fetch(API_URL, {
-  method: "GET",
-  cache: "no-store",
-});
+      const response = await fetch(`${API_URL}?_=${Date.now()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
-const text = await response.text();
+      const text = await response.text();
 
-if (!response.ok) {
-  throw new Error(`HTTP ${response.status} ${response.statusText}: ${text}`);
-}
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}: ${text}`);
+      }
 
-let data;
-try {
-  data = JSON.parse(text);
-} catch (err) {
-  throw new Error(`Invalid JSON returned by API: ${text}`);
-}
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON returned by API: ${text}`);
+      }
 
-setRows(Array.isArray(data) ? data.map(normalize) : []);
+      const incomingArray = Array.isArray(data) ? data : [];
+      const signature = buildSignature(incomingArray);
+
+      // Only update state if the data really changed
+      if (signature !== lastSignatureRef.current) {
+        lastSignatureRef.current = signature;
+        setRows(incomingArray.map(normalize));
+      }
     } catch (err) {
       console.error("Failed to fetch data:", err);
       setRows([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      else setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData(false);
+
+    const intervalId = setInterval(() => {
+      fetchData(true);
+    }, AUTO_REFRESH_MS);
+
+    return () => clearInterval(intervalId);
   }, [fetchData, refresh]);
 
   useEffect(() => {
@@ -275,7 +307,6 @@ setRows(Array.isArray(data) ? data.map(normalize) : []);
 
   return (
     <div className="relative z-10 mx-auto max-w-[1400px] px-8 py-12">
-      {/* Header */}
       <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-600/5 px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-indigo-600">
@@ -288,18 +319,21 @@ setRows(Array.isArray(data) ? data.map(normalize) : []);
           <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
             Communication <span className="font-bold italic text-slate-400">Hub</span>
           </h1>
+
+          <p className="mt-2 text-sm font-medium text-slate-400">
+            {isRefreshing ? "Checking for new data..." : "Auto-updating every 15 seconds"}
+          </p>
         </div>
 
         <button
           onClick={() => setRefresh((r) => r + 1)}
           className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${loading || isRefreshing ? "animate-spin" : ""}`} />
           Refresh Data
         </button>
       </div>
 
-      {/* Stats Grid */}
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <ModernStatCard icon={AlertCircle} label="Pending" value={stats.pending} hint="Requires Attention" color="text-orange-500" />
         <ModernStatCard icon={Activity} label="For Action" value={stats.forAction} hint="Active Workflow" color="text-blue-500" />
@@ -309,7 +343,6 @@ setRows(Array.isArray(data) ? data.map(normalize) : []);
         <ModernStatCard icon={CheckCircle2} label="Actioned" value={stats.actioned} hint="Archived/Closed" color="text-emerald-700" />
       </div>
 
-      {/* Charts Row */}
       <div className="mb-12 grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md lg:col-span-2">
           <div className="mb-8 flex items-center justify-between">
@@ -392,7 +425,6 @@ setRows(Array.isArray(data) ? data.map(normalize) : []);
         </div>
       </div>
 
-      {/* Data Explorer Table */}
       <div className="flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
         <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-8">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
@@ -544,7 +576,6 @@ setRows(Array.isArray(data) ? data.map(normalize) : []);
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 p-8">
           <div className="flex h-10 w-24 items-center justify-center rounded-xl border border-slate-200 bg-white font-black text-slate-900 shadow-sm">
             {page} <span className="mx-2 font-light text-slate-300">/</span> {totalPages}
