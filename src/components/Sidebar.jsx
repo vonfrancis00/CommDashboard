@@ -31,11 +31,16 @@ export default function Sidebar({ activeView, setActiveView }) {
     >
       {/* Logo Section */}
       <div className="mb-8 flex items-center px-2 py-4">
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-200">
-          <Activity className="h-6 w-6" />
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white text-white shadow-lg shadow-indigo-200">
+          <img
+            src="/logo-dtms.png" // Replace with your image filename
+            alt="CommHub Logo"
+            className="h-12 w-12 object-contain"
+          />
           <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
         </div>
-        <div className="ml-4 flex flex-col opacity-0 group-hover:opacity-100 transition-all duration-300">
+
+        <div className="ml-4 flex flex-col opacity-0 transition-all duration-300 group-hover:opacity-100">
           <span className="text-lg font-black leading-none tracking-tight text-slate-900">
             CommHub
           </span>

@@ -185,10 +185,12 @@ export default function CommTrackDashboard() {
   const [isForwarding, setIsForwarding] = useState(false);
 
   const [forwardModal, setForwardModal] = useState({
-    isOpen: false,
-    refNumber: "",
-    to: "",
-  });
+  isOpen: false,
+  refNumber: "",
+  to: "",
+  subject: "",
+  includeOriginalCc: true,
+});
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -251,20 +253,26 @@ export default function CommTrackDashboard() {
   };
 
   const openForwardModal = (refNumber) => {
-    setForwardModal({
-      isOpen: true,
-      refNumber,
-      to: "",
-    });
-  };
+  const row = rows.find(r => r.refNumber === refNumber);
+
+  setForwardModal({
+    isOpen: true,
+    refNumber,
+    to: "",
+    subject: row?.subject || "",
+    includeOriginalCc: true,
+    originalCc: "",
+  });
+};
 
   const closeForwardModal = () => {
-    setForwardModal({
-      isOpen: false,
-      refNumber: "",
-      to: "",
-    });
-  };
+  setForwardModal({
+    isOpen: false,
+    refNumber: "",
+    to: "",
+    subject: "",
+  });
+};
 
   const fetchData = useCallback(async (silent = false) => {
   try {
@@ -403,6 +411,8 @@ export default function CommTrackDashboard() {
       const result = await request("forwardRecord", "POST", {
   refNumber: forwardModal.refNumber,
   to: forwardModal.to,
+  subject: forwardModal.subject,
+  includeOriginalCc: forwardModal.includeOriginalCc,
 });
 
       if (!result.success) {
@@ -611,65 +621,96 @@ export default function CommTrackDashboard() {
           </div>
         </div>
       )}
-
       {forwardModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all duration-300">
-          <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/60 bg-white/95 p-8 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                <Send className="h-6 w-6" />
-              </div>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all duration-300">
+    <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/60 bg-white/95 p-8 shadow-2xl">
 
-              <div className="flex-1">
-                <h3 className="text-xl font-extrabold text-slate-900">Forward Email</h3>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
-                  The original email attachments and CC recipients will be included automatically.
-                </p>
-              </div>
+      <div className="mt-6 space-y-4">
 
-              <button
-                onClick={closeForwardModal}
-                className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+  {/* TO */}
+  <div>
+    <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
+      Forward To
+    </label>
 
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
-                  Forward To
-                </label>
-                <input
-                  type="email"
-                  value={forwardModal.to}
-                  onChange={(e) =>
-                    setForwardModal((prev) => ({ ...prev, to: e.target.value }))
-                  }
-                  placeholder="recipient@example.com"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
-                />
-              </div>
+    <input
+      type="email"
+      value={forwardModal.to}
+      onChange={(e) =>
+        setForwardModal((prev) => ({
+          ...prev,
+          to: e.target.value,
+        }))
+      }
+      placeholder="recipient@example.com"
+      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
+    />
+  </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  onClick={closeForwardModal}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-600 transition hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={forwardRecord}
-                  disabled={isForwarding}
-                  className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {isForwarding ? "Forwarding..." : "Forward"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+  {/* SUBJECT */}
+  <div>
+    <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
+      Subject
+    </label>
+
+    <input
+      type="text"
+      value={forwardModal.subject}
+      onChange={(e) =>
+        setForwardModal((prev) => ({
+          ...prev,
+          subject: e.target.value,
+        }))
+      }
+      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
+    />
+  </div>
+
+  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+  <input
+    id="includeCc"
+    type="checkbox"
+    checked={forwardModal.includeOriginalCc}
+    onChange={(e) =>
+      setForwardModal((prev) => ({
+        ...prev,
+        includeOriginalCc: e.target.checked,
+      }))
+    }
+    className="h-4 w-4"
+  />
+
+  <label
+    htmlFor="includeCc"
+    className="text-sm font-medium text-slate-700 cursor-pointer"
+  >
+    Include CC recipients
+  </label>
+</div>
+
+  {/* BUTTONS */}
+  <div className="flex justify-end gap-3 pt-2">
+    <button
+      onClick={closeForwardModal}
+      className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-600 hover:bg-slate-50"
+    >
+      Cancel
+    </button>
+
+    <button
+      onClick={forwardRecord}
+      disabled={isForwarding}
+      className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 disabled:opacity-50"
+    >
+      {isForwarding ? "Forwarding..." : "Forward"}
+    </button>
+  </div>
+
+</div>
+</div>
+</div>
       )}
+
 
       <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div>

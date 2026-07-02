@@ -6,12 +6,21 @@ export default function Login({ onLogin }) {
 
   const [showPassword, setShowPassword] = useState(false);
   const [lastUser, setLastUser] = useState(null);
+  const [continueMode, setContinueMode] = useState(false);
 
   useEffect(() => {
   const saved = localStorage.getItem("lastLogin");
 
   if (saved) {
-    setLastUser(JSON.parse(saved));
+    const user = JSON.parse(saved);
+
+    setLastUser(user);
+    setContinueMode(true);
+
+    setForm({
+      username: user.email,
+      password: "",
+    });
   }
 }, []);
 
@@ -153,31 +162,52 @@ onLogin();
               onSubmit={handleSubmit}
             >
 
-              <div>
-
-                <label className="text-sm text-slate-300">
+              {!continueMode ? (
+                <div>
+                  <label className="text-sm text-slate-300">
                     Email
-                </label>
+                  </label>
 
-                <div className="mt-2 relative">
+                  <div className="mt-2 relative">
 
-                  <User
-                    className="absolute left-4 top-4 text-slate-500"
-                    size={20}
-                  />
+                    <User
+                      className="absolute left-4 top-4 text-slate-500"
+                      size={20}
+                    />
 
-                  <input
-                    type="text"
-                    name="username"
-                    value={form.username}
-                    onChange={handleChange}
-                    placeholder="Enter email"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-blue-500 transition"
-                  />
+                    <input
+                      type="text"
+                      name="username"
+                      value={form.username}
+                      onChange={handleChange}
+                      placeholder="Enter email"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                    />
+
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-6 flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-xl font-bold text-white">
+                    {lastUser.name.charAt(0).toUpperCase()}
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-slate-400">
+                      Continue as
+                    </p>
+
+                    <h3 className="text-xl font-bold text-white">
+                      {lastUser.name}
+                    </h3>
+
+                    {/* <p className="text-sm text-slate-400">
+                      {lastUser.email}
+                    </p> */}
+                  </div>
 
                 </div>
-
-              </div>
+              )}
 
               <div>
 
@@ -193,6 +223,7 @@ onLogin();
                   />
 
                   <input
+                    id="password"
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={form.password}
@@ -216,6 +247,27 @@ onLogin();
                 </div>
 
               </div>
+              {continueMode && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setContinueMode(false);
+                      setLastUser(null);
+
+                      localStorage.removeItem("lastLogin");
+
+                      setForm({
+                        username: "",
+                        password: "",
+                      });
+                    }}
+                    className="text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    Use another account
+                  </button>
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500 rounded-xl p-3 text-red-300 text-sm">
@@ -227,44 +279,12 @@ onLogin();
   disabled={loading}
   className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 transition text-white font-semibold shadow-lg shadow-blue-700/30 disabled:opacity-60"
 >
-  {loading ? "Signing In..." : "Sign In"}
+  {loading
+  ? "Signing In..."
+  : continueMode
+  ? `Continue as ${lastUser?.name}`
+  : "Sign In"}
 </button>
-
-{/* Continue As */}
-{lastUser && (
-  <button
-    type="button"
-    onClick={() => {
-      setForm((prev) => ({
-        ...prev,
-        username: lastUser.email,
-      }));
-    }}
-    className="mt-5 w-full flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/40 py-3 text-slate-300 hover:bg-slate-800 hover:border-blue-500 transition-all duration-300"
-  >
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-5 h-5 text-slate-400"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-14-5M4 15a8 8 0 0014 5"
-      />
-    </svg>
-
-    <span className="font-medium">
-      Continue as{" "}
-      <span className="font-semibold text-blue-400">
-        {lastUser.name}
-      </span>
-    </span>
-  </button>
-)}
 
             </form>
 
