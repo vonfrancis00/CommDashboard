@@ -1,6 +1,7 @@
 // src/services/api.js
 
-const BASE_URL = import.meta.env.VITE_API_URL || "/commtrack-api";
+const BASE_URL =
+  import.meta.env.VITE_SHEET_API_URL || "/commtrack-api";
 
 /**
  * Generic request function for Google Apps Script
