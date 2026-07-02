@@ -726,7 +726,7 @@ export default function CommTrackDashboard() {
           </h1>
 
           <p className="mt-2 text-sm font-medium text-slate-400">
-            {isRefreshing ? "Checking for new data..." : "Auto-updating every 15 seconds"}
+            A centralized platform for efficient communication tracking, monitoring, and document management.
           </p>
         </div>
 
