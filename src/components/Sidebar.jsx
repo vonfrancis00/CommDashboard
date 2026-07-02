@@ -84,13 +84,6 @@ export default function Sidebar({ activeView, setActiveView }) {
       {/* Bottom Actions & Status */}
       <div className="mt-auto space-y-4 px-2 pb-4">
         <div className="space-y-2">
-          <button className="flex w-full items-center gap-4 rounded-xl p-3 text-sm font-semibold text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-900">
-            <Settings className="h-5 w-5 shrink-0" />
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              Settings
-            </span>
-          </button>
-
           <button
             onClick={() => setShowLogoutModal(true)}
             className="flex w-full items-center gap-4 rounded-xl p-3 text-sm font-semibold text-red-500 transition-all hover:bg-red-50 hover:text-red-600"
@@ -100,21 +93,6 @@ export default function Sidebar({ activeView, setActiveView }) {
               Logout
             </span>
           </button>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-2 transition-all duration-300 group-hover:p-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            </div>
-            <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <span className="text-[10px] font-bold uppercase tracking-tighter text-slate-400">
-                Network Status
-              </span>
-              <span className="text-xs font-bold text-emerald-600">Operational</span>
-            </div>
-            <ChevronRight className="ml-auto h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100" />
-          </div>
         </div>
       </div>
     </aside>
