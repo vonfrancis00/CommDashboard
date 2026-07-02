@@ -1,7 +1,21 @@
-import React from "react";
-import { Activity, LayoutDashboard, Send, Upload, ReplyAll, Settings, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Activity,
+  LayoutDashboard,
+  Send,
+  Upload,
+  ReplyAll,
+  Settings,
+  ChevronRight,
+  LogOut,
+} from "lucide-react";
 
 export default function Sidebar({ activeView, setActiveView }) {
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const logout = () => {
+  localStorage.removeItem("user");
+  window.location.reload();
+};
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "replies", label: "Replies & Forward", icon: ReplyAll },
@@ -10,6 +24,7 @@ export default function Sidebar({ activeView, setActiveView }) {
   ];
 
   return (
+    <>
     <aside 
       className="fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-200/60 bg-white/80 backdrop-blur-xl p-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] 
                  w-20 hover:w-72 group shadow-[20px_0_30px_-15px_rgba(0,0,0,0.05)]"
@@ -68,10 +83,24 @@ export default function Sidebar({ activeView, setActiveView }) {
 
       {/* Bottom Actions & Status */}
       <div className="mt-auto space-y-4 px-2 pb-4">
-        <button className="flex w-full items-center gap-4 rounded-xl p-3 text-sm font-semibold text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-900">
-          <Settings className="h-5 w-5 shrink-0" />
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">Settings</span>
-        </button>
+        <div className="space-y-2">
+          <button className="flex w-full items-center gap-4 rounded-xl p-3 text-sm font-semibold text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-900">
+            <Settings className="h-5 w-5 shrink-0" />
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              Settings
+            </span>
+          </button>
+
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="flex w-full items-center gap-4 rounded-xl p-3 text-sm font-semibold text-red-500 transition-all hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              Logout
+            </span>
+          </button>
+        </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/50 p-2 transition-all duration-300 group-hover:p-4">
           <div className="flex items-center gap-3">
@@ -89,5 +118,45 @@ export default function Sidebar({ activeView, setActiveView }) {
         </div>
       </div>
     </aside>
+    {showLogoutModal && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="p-6">
+
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+          <LogOut className="h-8 w-8 text-red-600" />
+        </div>
+
+        <h2 className="text-center text-2xl font-bold text-slate-900">
+          Logout
+        </h2>
+
+        <p className="mt-3 text-center text-slate-500">
+          Are you sure you want to logout from the Communication Monitoring System?
+        </p>
+
+        <div className="mt-8 flex justify-end gap-3">
+
+          <button
+            onClick={() => setShowLogoutModal(false)}
+            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-600 transition hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={logout}
+            className="rounded-xl bg-red-600 px-5 py-2.5 font-medium text-white transition hover:bg-red-700"
+          >
+            Logout
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+</>
   );
 }
