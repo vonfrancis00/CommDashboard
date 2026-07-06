@@ -37,16 +37,17 @@ export async function request(action = "", method = "GET", data = {}) {
         "Content-Type": "text/plain;charset=utf-8",
       };
 
-      options.body = JSON.stringify({
-        action,
-        ...data,
-      });
+      const body = {
+  action,
+  ...data,
+};
+
+options.body = JSON.stringify(body);
     }
 
     const response = await fetch(url, options);
 
     const text = await response.text();
-
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${text}`);
     }

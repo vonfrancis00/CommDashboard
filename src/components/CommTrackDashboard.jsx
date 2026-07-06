@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useDebounce } from "use-debounce";
 import { request } from "../services/api";
+import ForwardModal from "../components/ForwardModal";
 import {
   Activity,
   Search,
@@ -18,6 +19,7 @@ import {
   Trash2,
   X,
   Send,
+  Eye,
 } from "lucide-react";
 import {
   Area,
@@ -79,6 +81,17 @@ function normalize(item = {}) {
   const subject = safe(item.Subject || item.subject);
   const remarks = safe(item.Remarks || item.remarks);
   const dateReceived = item["Date Received"] || item.dateReceived;
+  const fileLink = safe(
+  item["File Links"] ||
+  item["File Link"] ||
+  item["Previous File"] ||
+  item["URL"] ||
+  item["Url"] ||
+  item["Links"] ||
+  item.fileLink ||
+  item.Link ||
+  item.link
+);
   const parsedDate = parseDate(dateReceived);
 
   return {
@@ -88,6 +101,7 @@ function normalize(item = {}) {
     subject,
     remarks,
     dateReceived,
+    fileLink,
     parsedDate,
     searchBlob: [activity, refNumber, receivedFrom, subject, remarks]
       .join(" ")
@@ -183,6 +197,12 @@ export default function CommTrackDashboard() {
   const [savingRemarks, setSavingRemarks] = useState({});
   const [deletingRows, setDeletingRows] = useState({});
   const [isForwarding, setIsForwarding] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [viewModal, setViewModal] = useState({
+  isOpen: false,
+  link: "",
+  title: "",
+});
 
   const [forwardModal, setForwardModal] = useState({
   isOpen: false,
@@ -287,6 +307,7 @@ export default function CommTrackDashboard() {
     if (signature !== lastSignatureRef.current) {
       lastSignatureRef.current = signature;
       setRows(incomingArray.map(normalize));
+      setSelectedRows([]);
     }
   } catch (err) {
     console.error("Failed to fetch data:", err);
@@ -345,6 +366,43 @@ export default function CommTrackDashboard() {
     },
     [fetchData]
   );
+  const updateMultipleRemarks = async (newRemark) => {
+  if (!selectedRows.length) return;
+
+  try {
+    const result = await request("updateMultipleRemarks", "POST", {
+      sheet: "Sheet1", // <-- change if your sheet name is different
+      refNumbers: selectedRows,
+      remarks: newRemark,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    // Update UI immediately
+    setRows((prev) =>
+      prev.map((row) =>
+        selectedRows.includes(row.refNumber)
+          ? { ...row, remarks: newRemark }
+          : row
+      )
+    );
+
+    setSelectedRows([]);
+
+    await fetchData(true);
+
+    showPopupSuccess(
+      "Success",
+      `${result.updated} record(s) updated.`
+    );
+
+  } catch (err) {
+    console.error(err);
+    showPopupAlert("Update Failed", err.message);
+  }
+};
 
   const executeDelete = useCallback(
     async (refNumber) => {
@@ -396,6 +454,62 @@ export default function CommTrackDashboard() {
     },
     [executeDelete]
   );
+  const executeMultipleDelete = async () => {
+
+  showPopupLoading(
+    "Deleting Records",
+    `Deleting ${selectedRows.length} selected records...`
+  );
+
+  try {
+
+    const result = await request("deleteMultipleRecords", "POST", {
+  sheet: "Sheet1",
+  refNumbers: selectedRows,
+});
+
+    if (!result.success) {
+      throw new Error(result.error || "Delete failed");
+    }
+
+    setSelectedRows([]);
+
+    lastSignatureRef.current = "";
+
+    await fetchData(true);
+
+    closeModal();
+
+    showPopupSuccess(
+      "Deleted",
+      "Selected records were deleted successfully."
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    closeModal();
+
+    showPopupAlert(
+      "Delete Failed",
+      err.message || "Unable to delete records."
+    );
+
+  }
+};
+
+const deleteMultipleRecords = () => {
+
+  if (!selectedRows.length) return;
+
+  showPopupConfirm(
+    "Delete Selected Records",
+    `Delete ${selectedRows.length} selected record(s)? This cannot be undone.`,
+    executeMultipleDelete
+  );
+
+};
 
   const forwardRecord = async () => {
     if (!forwardModal.refNumber || !forwardModal.to.trim()) {
@@ -451,6 +565,31 @@ export default function CommTrackDashboard() {
     else newExpanded.add(refNumber);
     setExpandedRows(newExpanded);
   };
+  const toggleRowSelection = (refNumber) => {
+  setSelectedRows((prev) =>
+    prev.includes(refNumber)
+      ? prev.filter((r) => r !== refNumber)
+      : [...prev, refNumber]
+  );
+};
+
+const toggleSelectAll = () => {
+  const currentPageRefs = paginatedRows.map((r) => r.refNumber);
+
+  const allSelected = currentPageRefs.every((r) =>
+    selectedRows.includes(r)
+  );
+
+  if (allSelected) {
+    setSelectedRows((prev) =>
+      prev.filter((r) => !currentPageRefs.includes(r))
+    );
+  } else {
+    setSelectedRows((prev) => [
+      ...new Set([...prev, ...currentPageRefs]),
+    ]);
+  }
+};
 
   const availableYears = useMemo(() => {
     const years = rows.map((r) => r.parsedDate?.getFullYear()).filter(Boolean);
@@ -621,95 +760,97 @@ export default function CommTrackDashboard() {
           </div>
         </div>
       )}
-      {forwardModal.isOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all duration-300">
-    <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/60 bg-white/95 p-8 shadow-2xl">
+      <ForwardModal
+  isOpen={forwardModal.isOpen}
+  data={forwardModal}
+  setData={setForwardModal}
+  onClose={closeForwardModal}
+  onForward={forwardRecord}
+  isForwarding={isForwarding}
+/>
+{viewModal.isOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-6">
+    <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
 
-      <div className="mt-6 space-y-4">
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <div>
+          <h2 className="font-black text-slate-800">
+            View Communication
+          </h2>
 
-  {/* TO */}
-  <div>
-    <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
-      Forward To
-    </label>
+          <p className="text-xs text-slate-400">
+            {viewModal.title}
+          </p>
+        </div>
 
-    <input
-      type="email"
-      value={forwardModal.to}
-      onChange={(e) =>
-        setForwardModal((prev) => ({
-          ...prev,
-          to: e.target.value,
-        }))
+        <button
+          onClick={() =>
+            setViewModal({
+              isOpen: false,
+              link: "",
+              title: "",
+            })
+          }
+          className="rounded-full bg-slate-100 p-2 hover:bg-red-100"
+        >
+          <X className="h-5 w-5 text-slate-500" />
+        </button>
+      </div>
+
+
+      {viewModal.link.includes("mail.google.com") ? (
+
+  <div className="flex h-full flex-col items-center justify-center gap-5">
+
+    <Mail className="h-20 w-20 text-indigo-500" />
+
+    <h2 className="text-xl font-black text-slate-800">
+      Gmail communication cannot be previewed
+    </h2>
+
+    <p className="text-sm text-slate-500">
+      Gmail blocks embedded previews for security.
+    </p>
+
+    <button
+      onClick={() =>
+        window.open(
+          viewModal.link,
+          "_blank"
+        )
       }
-      placeholder="recipient@example.com"
-      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
-    />
+      className="
+        rounded-xl 
+        bg-indigo-600 
+        px-6 py-3 
+        text-sm 
+        font-bold 
+        text-white
+        hover:bg-indigo-700
+      "
+    >
+      Open in Gmail
+    </button>
+
   </div>
 
-  {/* SUBJECT */}
-  <div>
-    <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
-      Subject
-    </label>
+) : (
 
-    <input
-      type="text"
-      value={forwardModal.subject}
-      onChange={(e) =>
-        setForwardModal((prev) => ({
-          ...prev,
-          subject: e.target.value,
-        }))
-      }
-      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
-    />
-  </div>
-
-  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-  <input
-    id="includeCc"
-    type="checkbox"
-    checked={forwardModal.includeOriginalCc}
-    onChange={(e) =>
-      setForwardModal((prev) => ({
-        ...prev,
-        includeOriginalCc: e.target.checked,
-      }))
+  <iframe
+    src={
+      viewModal.link
+        ?.replace("/view", "/preview")
+        ?.replace("?usp=sharing", "")
     }
-    className="h-4 w-4"
+    title="Communication Viewer"
+    className="h-full w-full"
   />
 
-  <label
-    htmlFor="includeCc"
-    className="text-sm font-medium text-slate-700 cursor-pointer"
-  >
-    Include CC recipients
-  </label>
-</div>
+)}
 
-  {/* BUTTONS */}
-  <div className="flex justify-end gap-3 pt-2">
-    <button
-      onClick={closeForwardModal}
-      className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-600 hover:bg-slate-50"
-    >
-      Cancel
-    </button>
-
-    <button
-      onClick={forwardRecord}
-      disabled={isForwarding}
-      className="rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 disabled:opacity-50"
-    >
-      {isForwarding ? "Forwarding..." : "Forward"}
-    </button>
+    </div>
   </div>
-
-</div>
-</div>
-</div>
-      )}
+)}
 
 
       <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
@@ -1017,11 +1158,62 @@ export default function CommTrackDashboard() {
             </div>
           </div>
         </div>
+                {selectedRows.length > 0 && (
+  <div className="flex items-center justify-between border-b border-slate-200 bg-indigo-50 px-6 py-4">
+    <div className="text-sm font-bold text-slate-700">
+      {selectedRows.length} record{selectedRows.length > 1 ? "s" : ""} selected
+    </div>
 
+    <div className="flex items-center gap-3">
+
+      <select
+        defaultValue=""
+        onChange={(e) => {
+          if (!e.target.value) return;
+          updateMultipleRemarks(e.target.value);
+          e.target.value = "";
+        }}
+        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold"
+      >
+        <option value="">Change Remarks</option>
+
+        {remarkOptions
+          .filter(Boolean)
+          .map((remark) => (
+            <option key={remark} value={remark}>
+              {remark}
+            </option>
+          ))}
+      </select>
+
+      <button
+        onClick={deleteMultipleRecords}
+        className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+      >
+        <Trash2 className="h-4 w-4" />
+        Delete Selected
+      </button>
+
+    </div>
+  </div>
+)}
         <div ref={tableContainerRef} className="max-h-[80vh] overflow-y-auto overflow-x-auto">
           <table className="w-full border-separate border-spacing-0">
             <thead className="sticky top-0 z-20">
               <tr className="bg-white/95 backdrop-blur-md">
+                <th className="border-b border-slate-100 px-4 py-5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={
+                      paginatedRows.length > 0 &&
+                      paginatedRows.every((r) =>
+                        selectedRows.includes(r.refNumber)
+                      )
+                    }
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4"
+                  />
+                </th>
                 <th className="border-b border-slate-100 px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                   Reference
                 </th>
@@ -1047,7 +1239,7 @@ export default function CommTrackDashboard() {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="py-32 text-center font-black italic text-slate-200 animate-pulse"
                   >
                     Synchronizing...
@@ -1068,6 +1260,14 @@ export default function CommTrackDashboard() {
                       key={row.refNumber || idx}
                       className="group transition-all duration-200 hover:bg-slate-50/50"
                     >
+                      <td className="px-4 py-6 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(row.refNumber)}
+                          onChange={() => toggleRowSelection(row.refNumber)}
+                          className="h-4 w-4"
+                        />
+                      </td>
                       <td className="relative px-8 py-6 align-top">
                         <div className="absolute bottom-0 left-0 top-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100" />
                         <span className="font-mono text-[10px] font-bold text-slate-400">
@@ -1129,6 +1329,19 @@ export default function CommTrackDashboard() {
 
                       <td className="px-8 py-6 align-top text-center">
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() =>
+                              setViewModal({
+                                isOpen: true,
+                                link: row.fileLink,
+                                title: row.subject,
+                              })
+                            }
+                            disabled={!row.fileLink}
+                            className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-wider text-blue-600 transition hover:bg-blue-100 disabled:opacity-40"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => openForwardModal(row.refNumber)}
                             disabled={isDeleting || isSaving}
