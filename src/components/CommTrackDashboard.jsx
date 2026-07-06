@@ -184,6 +184,7 @@ function ModernStatCard({
 
 export default function CommTrackDashboard() {
   const [rows, setRows] = useState([]);
+  const [timelineCache, setTimelineCache] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -192,6 +193,7 @@ export default function CommTrackDashboard() {
   const [endDate, setEndDate] = useState("");
   const [remarkFilter, setRemarkFilter] = useState("All");
   const [selectedYear, setSelectedYear] = useState("All");
+  const [todayFilter, setTodayFilter] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
@@ -348,6 +350,18 @@ const openTimeline = async (refNumber) => {
     if (signature !== lastSignatureRef.current) {
       lastSignatureRef.current = signature;
       setRows(incomingArray.map(normalize));
+      const timeline =
+  await request(
+    "getAllTimeline",
+    "GET"
+  );
+
+
+setTimelineCache(
+  Array.isArray(timeline)
+    ? timeline
+    : []
+);
       setSelectedRows([]);
     }
   } catch (err) {
@@ -600,7 +614,7 @@ const deleteMultipleRecords = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, startDate, endDate, remarkFilter, selectedYear]);
+  }, [search, startDate, endDate, remarkFilter, selectedYear, todayFilter,]);
 
   const toggleRow = (refNumber) => {
     const newExpanded = new Set(expandedRows);
@@ -646,14 +660,35 @@ const toggleSelectAll = () => {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const q = search.toLowerCase();
-    const start = startDate ? new Date(startDate).getTime() : null;
-    const end = endDate ? new Date(endDate + "T23:59:59").getTime() : null;
+  const q = search.toLowerCase();
+  const start = startDate ? new Date(startDate).getTime() : null;
+  const end = endDate ? new Date(endDate + "T23:59:59").getTime() : null;
 
-    return rows
-      .filter((row) => {
-        if (q && !row.searchBlob.includes(q)) return false;
-        if (remarkFilter !== "All" && row.remarks !== remarkFilter) return false;
+  const now = new Date();
+
+  return rows
+    .filter((row) => {
+      if (q && !row.searchBlob.includes(q)) return false;
+
+      if (
+        remarkFilter !== "All" &&
+        row.remarks !== remarkFilter
+      )
+        return false;
+
+
+      // TODAY CARD FILTER
+      if (todayFilter) {
+        if (!row.parsedDate) return false;
+
+        if (
+          row.parsedDate.getFullYear() !== now.getFullYear() ||
+          row.parsedDate.getMonth() !== now.getMonth() ||
+          row.parsedDate.getDate() !== now.getDate()
+        ) {
+          return false;
+        }
+      }
 
         if (start || end) {
           if (!row.parsedDate) return false;
@@ -665,7 +700,7 @@ const toggleSelectAll = () => {
         return true;
       })
       .sort((a, b) => (b.parsedDate?.getTime() || 0) - (a.parsedDate?.getTime() || 0));
-  }, [rows, search, startDate, endDate, remarkFilter]);
+  }, [rows, search, startDate, endDate, remarkFilter, todayFilter,]);
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * ROWS_PER_PAGE;
@@ -698,16 +733,28 @@ const toggleSelectAll = () => {
       chartData: monthOrder.map((m) => ({ month: m, count: monthMap.get(m) || 0 })),
       statusData: Array.from(statusMap.entries()).map(([name, value]) => ({ name, value })),
       stats: {
-        approved: getC("Approved"),
-        actioned: getC("Actioned"),
-        forInfo: getC("For Info"),
-        disapproved: getC("Disapproved"),
-        invitations: getC("Invitations"),
-        acknowledge: getC("Acknowledge"),
-        memorandums: getC("Memorandums"),
-        forAction: getC("For Action"),
-        pending: getC("Pending"),
-      },
+  today: rows.filter((r) => {
+    if (!r.parsedDate) return false;
+
+    const today = new Date();
+
+    return (
+      r.parsedDate.getFullYear() === today.getFullYear() &&
+      r.parsedDate.getMonth() === today.getMonth() &&
+      r.parsedDate.getDate() === today.getDate()
+    );
+  }).length,
+
+  approved: getC("Approved"),
+  actioned: getC("Actioned"),
+  forInfo: getC("For Info"),
+  disapproved: getC("Disapproved"),
+  invitations: getC("Invitations"),
+  acknowledge: getC("Acknowledge"),
+  memorandums: getC("Memorandums"),
+  forAction: getC("For Action"),
+  pending: getC("Pending"),
+},
     };
   }, [rows, selectedYear]);
 
@@ -934,7 +981,19 @@ const toggleSelectAll = () => {
           Refresh Data
         </button>
       </div>
-          <div className="mb-8 grid gap-5 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4">
+          <div className="mb-8 grid gap-5 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <ModernStatCard
+              icon={Calendar}
+              label="Today"
+              value={stats.today}
+              hint="Received Today"
+              color="text-cyan-500"
+              active={todayFilter}
+              onClick={() => {
+                setTodayFilter((prev) => !prev);
+                setRemarkFilter("All");
+              }}
+            />
             <ModernStatCard
             icon={AlertCircle}
             label="Pending"
