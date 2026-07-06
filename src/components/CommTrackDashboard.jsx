@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useDebounce } from "use-debounce";
 import { request } from "../services/api";
 import ForwardModal from "../components/ForwardModal";
+import TimelineDot from "../components/TimelineDot";
 import {
   Activity,
   Search,
@@ -198,6 +199,7 @@ export default function CommTrackDashboard() {
   const [deletingRows, setDeletingRows] = useState({});
   const [isForwarding, setIsForwarding] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  
   const [viewModal, setViewModal] = useState({
   isOpen: false,
   link: "",
@@ -219,6 +221,12 @@ export default function CommTrackDashboard() {
     message: "",
     onConfirm: null,
   });
+
+  const [timelineModal, setTimelineModal] = useState({
+  isOpen: false,
+  refNumber: "",
+  data: [],
+});
 
   const lastSignatureRef = useRef("");
   const rowsRef = useRef([]);
@@ -294,6 +302,39 @@ export default function CommTrackDashboard() {
   });
 };
 
+const openTimeline = async (refNumber) => {
+
+  try {
+
+    const result = await request(
+      "getTimeline",
+      "POST",
+      {
+        refNumber
+      }
+    );
+
+
+    setTimelineModal({
+      isOpen: true,
+      refNumber,
+      data: result || [],
+    });
+
+
+  } catch (err) {
+
+    console.error(err);
+
+    showPopupAlert(
+      "Timeline Error",
+      "Unable to load timeline history."
+    );
+
+  }
+
+};
+
   const fetchData = useCallback(async (silent = false) => {
   try {
     if (!silent) setLoading(true);
@@ -335,7 +376,9 @@ export default function CommTrackDashboard() {
 
       try {
         const result = await request("updateRemark", "POST", {
+  sheet: "Sheet1",
   refNumber,
+  oldRemarks: previousRemark,
   remarks: newRemark,
 });
 
@@ -767,6 +810,18 @@ const toggleSelectAll = () => {
   onClose={closeForwardModal}
   onForward={forwardRecord}
   isForwarding={isForwarding}
+/>
+<TimelineDot
+  isOpen={timelineModal.isOpen}
+  refNumber={timelineModal.refNumber}
+  data={timelineModal.data}
+  onClose={() =>
+    setTimelineModal({
+      isOpen:false,
+      refNumber:"",
+      data:[]
+    })
+  }
 />
 {viewModal.isOpen && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-6">
@@ -1329,6 +1384,12 @@ const toggleSelectAll = () => {
 
                       <td className="px-8 py-6 align-top text-center">
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => openTimeline(row.refNumber)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100"
+                          >
+                            <Clock className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() =>
                               setViewModal({
