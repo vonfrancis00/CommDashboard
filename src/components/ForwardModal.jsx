@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { X, Send } from "lucide-react";
+import {
+  X,
+  Send,
+  Search,
+  Mail,
+  Users,
+  CheckCircle2,
+} from "lucide-react";
 import { request } from "../services/api";
 
 export default function ForwardModal({
@@ -13,328 +20,275 @@ export default function ForwardModal({
 
   const [sucs, setSucs] = useState([]);
   const [selectedSucs, setSelectedSucs] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loadingSucs, setLoadingSucs] = useState(false);
+
 
   useEffect(() => {
     if (!isOpen) return;
-
     async function loadSucs() {
       try {
+        setLoadingSucs(true);
         const res = await request(
           "getSucs",
           "GET"
         );
-
         setSucs(res || []);
-
       } catch (err) {
-        console.error("Failed loading SUCs:", err);
+        console.error(
+          "Failed loading SUCs:",
+          err
+        );
+      } finally {
+        setLoadingSucs(false);
       }
     }
-
     loadSucs();
-
   }, [isOpen]);
-
-
   function toggleSUC(email) {
-
     let updated;
-
     if (selectedSucs.includes(email)) {
-
-      updated = selectedSucs.filter(
-        e => e !== email
-      );
-
+      updated =
+        selectedSucs.filter(
+          e => e !== email
+        );
     } else {
-
       updated = [
         ...selectedSucs,
         email
       ];
     }
-
-
     setSelectedSucs(updated);
-
-
     setData(prev => {
-
       const manualEmails =
         (prev.to || "")
-            .split(",")
-            .map(e => e.trim())
-            .filter(e =>
-            e !== "" &&
-            !sucs.some(
+          .split(",")
+          .map(e => e.trim())
+          .filter(
+            e =>
+              e &&
+              !sucs.some(
                 s => s.email === e
-            )
-            );
-
-
-        return {
+              )
+          );
+      return {
         ...prev,
-
         to: [
-            ...manualEmails,
-            ...updated
+          ...manualEmails,
+          ...updated
         ]
-        .filter(Boolean)
-        .join(", ")
-        };
-
+          .filter(Boolean)
+          .join(", ")
+      };
     });
-
   }
-
-
+  const filteredSucs =
+  sucs
+    .filter(s =>
+      s.name
+        ?.toLowerCase()
+        .includes(
+          search.toLowerCase()
+        )
+    )
+    .sort((a, b) =>
+      a.name.localeCompare(
+        b.name,
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
+  async function handleForward() {
+    const success =
+      await onForward();
+    if (success) {
+      setSelectedSucs([]);
+      setData(prev => ({
+        ...prev,
+        to: ""
+      }));
+    }
+  }
   if (!isOpen) return null;
-
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
-
-      <div className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/60 bg-white/95 p-8 shadow-2xl">
-
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm p-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/50 bg-white shadow-2xl">
         {/* HEADER */}
-        <div className="flex items-center justify-between">
-
+        <div className="flex items-center justify-between px-8 py-6">
           <div>
-            <h2 className="text-xl font-black text-slate-900">
-              Forward Email
-            </h2>
-
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              Ref: {data.refNumber}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className=" flex h-11 w-11items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                <Mail size={22}/>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-900">
+                  Forward Communication
+                </h2>
+                <p className="text-xs font-semibold text-slate-400">
+                  Reference No: {data.refNumber}
+                </p>
+              </div>
+            </div>
           </div>
-
-
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-slate-400 hover:bg-slate-100"
-          >
-            <X className="h-5 w-5" />
+          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+            <X size={22}/>
           </button>
-
         </div>
 
-
-
-        <div className="mt-6 space-y-4">
-
-
+        {/* BODY */}
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
           {/* TO */}
-          <div>
-
-            <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
+          <section>
+            <Label>
               Forward To
-            </label>
-
-
-            <input
-              type="text"
-              value={data.to}
-              onChange={(e)=>
+            </Label>
+            <input value={data.to} onChange={(e)=>
                 setData(prev=>({
                   ...prev,
                   to:e.target.value
                 }))
               }
-
-              placeholder="recipient@example.com"
-
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
+              placeholder="email1@example.com, email2@example.com"
+              className="input-style"
             />
-
-          </div>
-
-
-
-          {/* SUC LIST */}
-          <div>
-
-            <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
-              Select SUC Recipients
-            </label>
-
-
-            <div className="max-h-40 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-
-
-              {sucs.length === 0 && (
-
-                <p className="text-xs text-slate-400">
+          </section>
+          {/* SUC */}
+          <section>
+            <div className="flex items-center justify-between">
+              <Label>
+                SUC Recipients
+              </Label>
+              <span className="text-xs font-bold text-indigo-500">
+                {selectedSucs.length} selected
+              </span>
+            </div>
+            {/* SEARCH */}
+            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
+              <Search
+                size={16}
+                className="text-slate-400"
+              />
+              <input value={search} 
+                onChange={(e)=>
+                  setSearch(
+                    e.target.value
+                  )
+                }
+                placeholder="Search SUC..."
+                className="flex-1 bg-transparent py-2 text-sm outline-none"
+              />
+            </div>
+            <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
+              {/* {loadingSucs && (
+                <p className="text-center text-sm text-slate-400">
+                  Loading recipients...
+                </p>
+              )} */}
+              {!loadingSucs &&
+               filteredSucs.length === 0 && (
+                <p className="text-center text-sm text-slate-400">
                   No SUCs found
                 </p>
-
               )}
-
-
-              {sucs.map((suc,index)=>(
-
-                <label
-                  key={index}
-                  className="flex items-center gap-3 text-sm font-semibold text-slate-700"
+              {filteredSucs.map((suc,index)=>(
+                <label key={index} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition
+                    ${
+                      selectedSucs.includes(
+                        suc.email
+                      )
+                      ? 
+                      "border-indigo-400 bg-indigo-50"
+                      :
+                      "border-transparent bg-white hover:border-slate-200"
+                    }
+                  `}
                 >
-
-                  <input
-                    type="checkbox"
-
-                    checked={
+                  <input type="checkbox" checked={
                       selectedSucs.includes(
                         suc.email
                       )
                     }
-
-                    onChange={()=>
+                    onChange={() =>
                       toggleSUC(
                         suc.email
                       )
                     }
-
-                    className="h-4 w-4"
                   />
-
-
-                  {suc.name}
-
-
+                  <Users size={18} className="text-slate-400"/>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-700">
+                      {suc.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {suc.email}
+                    </p>
+                  </div>
+                  {selectedSucs.includes(
+                    suc.email
+                  ) && (
+                    <CheckCircle2 size={18} className="text-indigo-600"/>
+                  )}
                 </label>
-
               ))}
-
             </div>
-
-          </div>
-
-
-
-
+          </section>
           {/* SUBJECT */}
-          <div>
-
-            <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
+          <section>
+            <Label>
               Subject
-            </label>
-
-
+            </Label>
             <input
-              type="text"
-
               value={data.subject}
-
               onChange={(e)=>
                 setData(prev=>({
                   ...prev,
                   subject:e.target.value
                 }))
-              }
-
-
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500"
-
+              } className="input-style"
             />
-
-          </div>
-
-
-
-
+          </section>
           {/* CC */}
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-
-
-            <input
-              id="includeCc"
-              type="checkbox"
-
-              checked={
+          <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-slate-50 px-5 py-4">
+            <input type="checkbox" checked={
                 data.includeOriginalCc
               }
-
-
               onChange={(e)=>
                 setData(prev=>({
                   ...prev,
                   includeOriginalCc:
-                    e.target.checked
+                  e.target.checked
                 }))
               }
-
             />
-
-
-            <label
-              htmlFor="includeCc"
-              className="text-sm font-medium text-slate-700"
-            >
-              Include CC recipients
-            </label>
-
-
-          </div>
-
-
-
-
-          {/* BUTTONS */}
-          <div className="flex justify-end gap-3 pt-2">
-
-
-            <button
-              onClick={onClose}
-
-              className="rounded-2xl border px-5 py-3 text-xs font-black uppercase"
-            >
-              Cancel
-            </button>
-
-
-
-            <button
-            onClick={async () => {
-
-                const success =
-                await onForward();
-
-                if (success) {
-
-                setSelectedSucs([]);
-
-                setData(prev => ({
-                    ...prev,
-                    to: ""
-                }));
-
-                }
-
-            }}
-
-            disabled={isForwarding}
-
-
-              className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-black uppercase text-white disabled:opacity-50"
-            >
-
-              <Send className="h-4 w-4"/>
-
-              {isForwarding
-                ? "Forwarding..."
-                : "Forward"}
-
-            </button>
-
-
-          </div>
-
-
+            <span className="text-sm font-semibold text-slate-700">
+              Include original CC recipients
+            </span>
+          </label>
         </div>
-
-
+        {/* FOOTER */}
+        <div className="flex justify-end gap-3 px-8 py-5 bg-white ">
+          <button onClick={onClose} className=" rounded-xl px-6 py-3 text-xs font-black uppercase hover:bg-red-400">
+            Cancel
+          </button>
+          <button onClick={handleForward} disabled={isForwarding} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-black uppercase text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">
+            <Send size={16}/>
+            {
+              isForwarding
+              ? "Forwarding..."
+              : "Forward"
+            }
+          </button>
+        </div>
       </div>
-
     </div>
+  );
+}
+function Label({children}) {
+
+  return (
+
+    <label className="mb-2 block text-xs font-black uppercase tracking-wider text-slate-400">
+      {children}
+    </label>
   );
 }

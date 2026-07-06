@@ -860,7 +860,7 @@ const toggleSelectAll = () => {
               <span className="absolute h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
             </span>
-            System Live
+            Google Email Live
           </div>
           <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
             Communication <span className="font-bold italic text-slate-400">Hub</span>

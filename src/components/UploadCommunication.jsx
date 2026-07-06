@@ -152,13 +152,6 @@ export default function UploadCommunication() {
                 every record ready for tracking, review, and retrieval.
               </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[480px]">
-              <MiniStat icon={<Inbox className="h-4 w-4" />} label="Mode" value="Ready" />
-              <MiniStat icon={<ShieldCheck className="h-4 w-4" />} label="Status" value="Secure" />
-              <MiniStat icon={<FileUp className="h-4 w-4" />} label="Files" value={String(files.length)} />
-              <MiniStat icon={<Layers3 className="h-4 w-4" />} label="Type" value={form.communicationType || "—"} />
-            </div>
           </div>
         </div>
 

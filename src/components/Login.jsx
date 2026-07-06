@@ -58,10 +58,17 @@ const handleSubmit = async (e) => {
       return;
     }
 
-    localStorage.setItem(
+    // save active session (expires at midnight)
+localStorage.setItem(
   "user",
-  JSON.stringify(result)
+  JSON.stringify({
+    ...result,
+    loginDate: new Date().toDateString()
+  })
 );
+
+
+// save continue login account
 localStorage.setItem(
   "lastLogin",
   JSON.stringify({
@@ -70,6 +77,7 @@ localStorage.setItem(
     name: result.name,
   })
 );
+
 
 onLogin();
 
@@ -87,9 +95,9 @@ onLogin();
 
       <div className="hidden lg:flex w-1/2 relative items-center justify-center">
 
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-slate-950"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-700 via-slate-900 to-slate-950"></div>
 
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-blue-900/20 blur-3xl"></div>
+        <div className="absolute w-[500px] h-[500px] rounded-full bg-blue-900/60 blur-3xl"></div>
 
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-500/10 blur-3xl rounded-full"></div>
 
