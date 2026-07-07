@@ -10,7 +10,6 @@ import {
   MoreHorizontal,
   ChevronRight,
   Calendar,
-  CheckCircle2
 } from "lucide-react";
 
 const WEB_APP_URL =
@@ -21,7 +20,6 @@ export default function Replies() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [ackLoading, setAckLoading] = useState({});
 
   const fetchReplies = async () => {
     try {
@@ -66,74 +64,6 @@ export default function Replies() {
       ? "forward"
       : "reply";
   };
-
-  // ACKNOWLEDGED STATUS
-  const isAcknowledged = (item) => {
-    return String(
-      item?.Acknowledged ||
-      item?.acknowledged ||
-      item?.Status ||
-      ""
-    ).toLowerCase() === "acknowledged";
-  };
-
-  // ACKNOWLEDGE FUNCTION
-  // ACKNOWLEDGE FUNCTION
-// ACKNOWLEDGE FUNCTION
-const handleAcknowledge = async (item, index) => {
-
-  try {
-
-    setAckLoading(prev => ({
-      ...prev,
-      [index]: true
-    }));
-
-
-    const res = await fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify({
-        action: "acknowledge",
-        // only needed for Gmail reply
-        threadId:
-          item["Thread ID"]
-      })
-    });
-
-    const result = await res.json();
-
-    if (!result.success) { throw new Error( result.error || "Acknowledge failed");}
-
-    // change button to green
-    setData(prev => prev.map(row =>
-        row["Thread ID"] === item["Thread ID"] ?
-        {
-          ...row,
-          Acknowledged:
-            "Acknowledged"
-        }:
-        row
-      )
-    );
-  } catch(error) {
-    console.error(
-      "Acknowledge failed:",
-      error
-    );
-    alert(
-      error.message
-    );
-
-  } finally {
-    setAckLoading(prev => ({
-      ...prev,
-      [index]: false
-    }));
-  }
-};
 
   const getGroupDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -286,7 +216,6 @@ const handleAcknowledge = async (item, index) => {
                 <div className="space-y-3">
                   {items.map((item, idx) => {
                     const isFwd = getType(item) === "forward";
-                    const acknowledged = isAcknowledged(item);
 
                     return (
                       <div
@@ -355,29 +284,6 @@ const handleAcknowledge = async (item, index) => {
                         </div>
 
                         <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
-                          {/* ACKNOWLEDGE BUTTON */}
-                          {/* <button
-                            onClick={() =>
-                              !acknowledged &&
-                              handleAcknowledge(item, idx)
-                            }
-                            disabled={
-                              acknowledged || ackLoading[idx]
-                            }
-                            className={`h-10 px-4 flex items-center gap-2 rounded-xl font-bold text-xs transition-all shadow-sm ${
-                              acknowledged
-                                ? "bg-emerald-100 text-emerald-700 cursor-not-allowed"
-                                : "bg-blue-600 text-white hover:bg-blue-700"
-                            }`}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-
-                            {ackLoading[idx]
-                              ? "Saving..."
-                              : acknowledged
-                              ? "Acknowledged"
-                              : "Acknowledge"}
-                          </button> */}
 
                           <button
                             onClick={() =>
