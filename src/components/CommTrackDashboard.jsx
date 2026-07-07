@@ -228,7 +228,9 @@ export default function CommTrackDashboard() {
   isOpen: false,
   refNumber: "",
   data: [],
+  dateReceived: "",
 });
+const [loadingTimeline, setLoadingTimeline] = useState(null);
 
   const lastSignatureRef = useRef("");
   const rowsRef = useRef([]);
@@ -306,32 +308,55 @@ export default function CommTrackDashboard() {
 
 const openTimeline = async (refNumber) => {
 
+  const selectedRow = rows.find(
+    r => r.refNumber === refNumber
+  );
+
+  setLoadingTimeline(refNumber);
+
+  setTimelineModal({
+    isOpen: true,
+    refNumber,
+    data: [],
+    dateReceived: selectedRow?.dateReceived || "",
+  });
+
   try {
 
     const result = await request(
       "getTimeline",
       "POST",
       {
-        refNumber
+        refNumber,
       }
     );
 
-
     setTimelineModal({
-      isOpen: true,
-      refNumber,
-      data: result || [],
-    });
-
+  isOpen: true,
+  refNumber,
+  data: result || [],
+  dateReceived: selectedRow?.dateReceived || "",
+});
 
   } catch (err) {
 
     console.error(err);
 
+    setTimelineModal({
+  isOpen: true,
+  refNumber,
+  data: result || [],
+  dateReceived: selectedRow?.dateReceived || "",
+});
+
     showPopupAlert(
       "Timeline Error",
       "Unable to load timeline history."
     );
+
+  } finally {
+
+    setLoadingTimeline(null);
 
   }
 
@@ -342,7 +367,7 @@ const openTimeline = async (refNumber) => {
     if (!silent) setLoading(true);
     else setIsRefreshing(true);
 
-    const data = await request("", "GET");
+const data = await request("getRecords","GET");
 
     const incomingArray = Array.isArray(data) ? data : [];
     const signature = buildSignature(incomingArray);
@@ -862,6 +887,8 @@ const toggleSelectAll = () => {
   isOpen={timelineModal.isOpen}
   refNumber={timelineModal.refNumber}
   data={timelineModal.data}
+  dateReceived={timelineModal.dateReceived}
+  loading={loadingTimeline !== null}
   onClose={() =>
     setTimelineModal({
       isOpen:false,
@@ -1447,7 +1474,11 @@ const toggleSelectAll = () => {
                             onClick={() => openTimeline(row.refNumber)}
                             className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100"
                           >
-                            <Clock className="h-4 w-4" />
+                            {loadingTimeline === row.refNumber ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
                           </button>
                           <button
                             onClick={() =>

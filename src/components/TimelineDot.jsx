@@ -1,29 +1,8 @@
+import { useEffect, useMemo } from "react";
 import { X, Clock3, CheckCircle2, Circle } from "lucide-react";
 
-export default function TimelineDot({
-  isOpen,
-  onClose,
-  data = [],
-  refNumber,
-}) {
-  if (!isOpen) return null;
-
-  // 1. CREATE FULL STATUS FLOW
-  const timeline = data.length
-    ? [
-        {
-          status: data[0].oldStatus || "No Status",
-          timestamp: "Initial Status",
-        },
-        ...data.map((item) => ({
-          status: item.newStatus,
-          timestamp: item.timestamp,
-        })),
-      ]
-    : [];
-
-  // 2. STATE LOGIC DERIVATIONS (Calculated once outside the loop)
-const finalStatuses = [
+// 1. Move static constants outside the component to prevent redeclaration on every render
+const FINAL_STATUSES = [
   "approved",
   "disapproved",
   "actioned",
@@ -32,31 +11,112 @@ const finalStatuses = [
   "memorandums",
 ];
 
-const latestStatus =
-  timeline[timeline.length - 1]?.status?.trim().toLowerCase() || "";
+function formatTimelineDate(value) {
+  if (!value) return "";
 
-const isCompletedProcess =
-  finalStatuses.includes(latestStatus);
+  const date = new Date(value);
+
+  if (isNaN(date)) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+export default function TimelineDot({
+  isOpen,
+  onClose,
+  data = [],
+  refNumber,
+  dateReceived,
+  loading,
+}) {
+  // 2. Handle Escape key to close the modal (A11y)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      // Prevent background scrolling when modal is open
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, onClose]);
+
+  // 3. Memoize the timeline transformation logic
+  const { timeline, isCompletedProcess } = useMemo(() => {
+  if (!data || data.length === 0) {
+    return { timeline: [], isCompletedProcess: false };
+  }
+
+const compiledTimeline = [
+  {
+    status: data[0].oldStatus || "No Status",
+    timestamp: formatTimelineDate(dateReceived) || "Initial Status",
+  },
+
+  ...data.map((item) => ({
+    status: item.newStatus,
+    timestamp: formatTimelineDate(item.timestamp),
+  })),
+];
+
+  const latestStatus =
+    compiledTimeline[
+      compiledTimeline.length - 1
+    ]?.status?.trim().toLowerCase() || "";
+
+  const isCompleted = FINAL_STATUSES.includes(latestStatus);
+
+  return {
+    timeline: compiledTimeline,
+    isCompletedProcess: isCompleted,
+  };
+}, [data, dateReceived]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 transition-all duration-300">
-      <div className="w-full max-w-5xl rounded-2xl bg-white p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      {/* Click outside backdrop to close */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      <div className="relative w-full max-w-5xl rounded-2xl bg-white p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] z-10">
         
         {/* HEADER */}
         <div className="flex items-start justify-between border-b border-slate-100 pb-5">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">History Log</span>
-            <h2 className="text-2xl font-bold text-slate-800 mt-0.5">
+            <h2 id="modal-title" className="text-2xl font-bold text-slate-800 mt-0.5">
               Status Timeline
             </h2>
-            <p className="mt-1 text-xs font-medium text-slate-500">
-              Reference No: <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{refNumber}</span>
-            </p>
+            {refNumber && (
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                Reference No: <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{refNumber}</span>
+              </p>
+            )}
           </div>
 
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-50 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200"
+            aria-label="Close modal"
+            className="rounded-xl bg-slate-50 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <X className="h-5 w-5" />
           </button>
@@ -64,23 +124,36 @@ const isCompletedProcess =
 
         {/* TIMELINE BODY */}
         <div className="flex-1 overflow-y-auto py-6">
-          {timeline.length ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="relative flex h-16 w-16 items-center justify-center">
+                <span className="absolute h-full w-full animate-ping rounded-full bg-indigo-300  opacity-40"/>
+                <div className="flex h-14 w-14 animate-spin items-center justify-center rounded-full border-4 border-slate-200 border-t-indigo-600" />
+              </div>
+              <h3 className="mt-6 text-sm font-black text-slate-700">
+                Loading Timeline
+              </h3>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Retrieving status history...
+              </p>
+
+            </div>
+
+          ) : timeline.length ? (
             <div className="relative overflow-x-auto px-8 py-24 my-4 scrollbar-thin scrollbar-thumb-slate-200">
               
-              {/* THE FLEX WRAPPER (Locks vertical alignment geometry for the line) */}
               <div className="relative flex justify-between gap-16 min-w-max items-center h-10">
                 
-                {/* CONNECTING LINE TRACK (Offsets: half of node width = 4.5rem) */}
+                {/* CONNECTING LINE TRACK */}
                 <div className="absolute left-[4.5rem] right-[4.5rem] top-1/2 h-0.5 -translate-y-1/2 bg-slate-100 z-0" />
                 
                 {/* PROGRESS LINE */}
                 <div 
-                className={`absolute left-[4.5rem] top-1/2 h-0.5 -translate-y-1/2 z-0 transition-all duration-500 ${
-                    isCompletedProcess
-                    ? "bg-emerald-500"
-                    : "bg-indigo-500"
-                }`}
-                style={{ width: `calc(100% - 9rem)` }}
+                  className={`absolute left-[4.5rem] top-1/2 h-0.5 -translate-y-1/2 z-0 transition-all duration-500 ${
+                    isCompletedProcess ? "bg-emerald-500" : "bg-indigo-500"
+                  }`}
+                  style={{ width: `calc(100% - 9rem)` }}
                 />
 
                 {timeline.map((item, index) => {
@@ -92,11 +165,11 @@ const isCompletedProcess =
                       
                       {/* CARD: TOP PLACEMENT */}
                       {isTop && (
-                        <div className="absolute -top-20 w-44 text-center flex flex-col items-center justify-end h-16 transition-transform duration-200 group-hover:-translate-y-1">
-                          <h3 className="text-xs font-bold text-slate-800 line-clamp-2">
+                        <div className="absolute -top-20 w-44 text-center flex flex-col items-center justify-end h-16 transition-transform duration-200 group-hover:-translate-y-1 select-none">
+                          <h3 className="text-xs font-bold text-slate-800 line-clamp-2 break-words max-w-full">
                             {item.status}
                           </h3>
-                          <p className="mt-1 text-[11px] font-medium text-slate-400">
+                          <p className="mt-1 text-[11px] font-medium text-slate-400 whitespace-nowrap">
                             {item.timestamp}
                           </p>
                         </div>
@@ -106,15 +179,13 @@ const isCompletedProcess =
                       <div className="relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300">
                         {isLast ? (
                           <>
-                            {/* Current / Active Status Indicator */}
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-45" />
                             <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 shadow-lg shadow-indigo-200 border-4 border-white">
                               <Circle className="h-2.5 w-2.5 fill-white text-white" />
                             </div>
                           </>
                         ) : (
-                          /* Completed Status Indicator */
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-100 text-white transition-transform group-hover:scale-110">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 shadow-md shadow-emerald-100 text-white transition-transform duration-200 group-hover:scale-110">
                             <CheckCircle2 className="h-4 w-4 stroke-[3]" />
                           </div>
                         )}
@@ -122,11 +193,11 @@ const isCompletedProcess =
 
                       {/* CARD: BOTTOM PLACEMENT */}
                       {!isTop && (
-                        <div className="absolute top-12 w-44 text-center transition-transform duration-200 group-hover:translate-y-1">
-                          <h3 className="text-xs font-bold text-slate-800 line-clamp-2">
+                        <div className="absolute top-12 w-44 text-center transition-transform duration-200 group-hover:translate-y-1 select-none">
+                          <h3 className="text-xs font-bold text-slate-800 line-clamp-2 break-words max-w-full">
                             {item.status}
                           </h3>
-                          <p className="mt-1 text-[11px] font-medium text-slate-400">
+                          <p className="mt-1 text-[11px] font-medium text-slate-400 whitespace-nowrap">
                             {item.timestamp}
                           </p>
                         </div>
