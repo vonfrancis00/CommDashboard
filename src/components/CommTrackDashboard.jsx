@@ -37,7 +37,7 @@ import {
 
 
 const ROWS_PER_PAGE = 30;
-const AUTO_REFRESH_MS = 15000;
+const AUTO_REFRESH_MS = 30000;
 
 const cardStyle =
   "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
@@ -110,20 +110,6 @@ function normalize(item = {}) {
   };
 }
 
-function buildSignature(dataArray) {
-  return dataArray
-    .map((item) =>
-      [
-        safe(item["Ref number"] || item.refNumber || item.RefNumber),
-        safe(item["Received From"] || item.receivedFrom),
-        safe(item.Subject || item.subject),
-        safe(item.Remarks || item.remarks),
-        safe(item["Date Received"] || item.dateReceived),
-      ].join("||")
-    )
-    .join("##");
-}
-
 const getStatusStyles = (status) => {
   const s = status?.toLowerCase() || "";
   if (s === "pending") return "bg-orange-500/10 text-orange-600 border-orange-200/50";
@@ -184,7 +170,6 @@ function ModernStatCard({
 
 export default function CommTrackDashboard() {
   const [rows, setRows] = useState([]);
-  const [timelineCache, setTimelineCache] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -232,7 +217,6 @@ export default function CommTrackDashboard() {
 });
 const [loadingTimeline, setLoadingTimeline] = useState(null);
 
-  const lastSignatureRef = useRef("");
   const rowsRef = useRef([]);
   const tableContainerRef = useRef(null);
 
@@ -362,41 +346,79 @@ const openTimeline = async (refNumber) => {
 
 };
 
-  const fetchData = useCallback(async (silent = false) => {
-  try {
-    if (!silent) setLoading(true);
-    else setIsRefreshing(true);
+  const fetchData = useCallback(
+async (silent=false)=>{
 
-const data = await request("getRecords","GET");
+ try{
 
-    const incomingArray = Array.isArray(data) ? data : [];
-    const signature = buildSignature(incomingArray);
-
-    if (signature !== lastSignatureRef.current) {
-      lastSignatureRef.current = signature;
-      setRows(incomingArray.map(normalize));
-      const timeline =
-  await request(
-    "getAllTimeline",
-    "GET"
-  );
-
-
-setTimelineCache(
-  Array.isArray(timeline)
-    ? timeline
-    : []
-);
-      setSelectedRows([]);
-    }
-  } catch (err) {
-    console.error("Failed to fetch data:", err);
-    setRows([]);
-  } finally {
-    if (!silent) setLoading(false);
-    else setIsRefreshing(false);
+  if(!silent){
+    setLoading(true);
+  }else{
+    setIsRefreshing(true);
   }
-}, []);
+
+
+  const data =
+    await request(
+      "getRecords",
+      "GET"
+    );
+
+
+  const incoming =
+    Array.isArray(data)
+    ? data
+    : [];
+
+
+  const normalized =
+    incoming.map(normalize);
+
+
+  const oldCount =
+    rowsRef.current.length;
+
+
+  if(
+    normalized.length !== oldCount
+  ){
+
+    setRows(normalized);
+
+  }else{
+
+    const changed =
+      normalized.some(
+        (item,index)=>
+          item.refNumber !==
+          rowsRef.current[index]?.refNumber
+          ||
+          item.remarks !==
+          rowsRef.current[index]?.remarks
+      );
+
+
+    if(changed){
+
+      setRows(normalized);
+
+    }
+
+  }
+
+
+ }catch(err){
+
+  console.error(err);
+
+ }finally{
+
+  setLoading(false);
+  setIsRefreshing(false);
+
+ }
+
+},[]);
 
   const updateRemark = useCallback(
     async (refNumber, newRemark) => {
@@ -425,9 +447,6 @@ setTimelineCache(
           throw new Error(result.error || "Failed to update remarks");
         }
 
-        lastSignatureRef.current = "";
-        await fetchData(true);
-
         showPopupSuccess(
           "Changes Saved",
           `Reference ${refNumber} status has been updated to "${newRemark || "No Remark"}" successfully.`
@@ -448,41 +467,76 @@ setTimelineCache(
     },
     [fetchData]
   );
+  
   const updateMultipleRemarks = async (newRemark) => {
   if (!selectedRows.length) return;
-
+  showPopupLoading(
+    "Updating Records",
+    `Changing ${selectedRows.length} record(s) to "${newRemark}". Please wait...`
+  );
   try {
-    const result = await request("updateMultipleRemarks", "POST", {
-      sheet: "Sheet1", // <-- change if your sheet name is different
-      refNumbers: selectedRows,
-      remarks: newRemark,
-    });
+    // collect old status for timeline
+    const updates =
+      selectedRows.map(
+        (refNumber) => {
+          const row = rowsRef.current.find( r => r.refNumber === refNumber);
 
+          return {
+            refNumber,
+            oldRemarks: row?.remarks || ""
+          };
+        }
+      );
+    const result =
+      await request(
+        "updateMultipleRemarks",
+        "POST",
+        {
+          sheet:"Sheet1",
+          updates,
+          remarks:newRemark,
+        }
+      );
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error(
+        result.error
+      );
     }
-
-    // Update UI immediately
-    setRows((prev) =>
-      prev.map((row) =>
-        selectedRows.includes(row.refNumber)
-          ? { ...row, remarks: newRemark }
-          : row
-      )
+    // update UI instantly
+    setRows(
+      (prev) =>
+        prev.map(
+          (row) =>
+            selectedRows.includes(
+              row.refNumber
+            )
+            ?
+            {
+              ...row,
+              remarks:newRemark
+            }
+            :
+            row
+        )
     );
-
     setSelectedRows([]);
-
-    await fetchData(true);
-
+    closeModal();
     showPopupSuccess(
-      "Success",
-      `${result.updated} record(s) updated.`
+      "Changes Saved",
+      `${result.updated} record(s) updated successfully${
+        result.emailsSent !== undefined
+          ? ` and ${result.emailsSent} email(s) sent.`
+          : "."
+      }`
     );
-
-  } catch (err) {
+  } catch(err) {
     console.error(err);
-    showPopupAlert("Update Failed", err.message);
+    closeModal();
+    showPopupAlert(
+      "Update Failed",
+      err.message ||
+      "Unable to update selected records."
+    );
   }
 };
 
@@ -502,9 +556,6 @@ setTimelineCache(
         if (!result.success) {
           throw new Error(result.error || "Delete failed");
         }
-
-        lastSignatureRef.current = "";
-        await fetchData(true);
 
         closeModal();
         showPopupSuccess(

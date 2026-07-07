@@ -78,45 +78,62 @@ export default function Replies() {
   };
 
   // ACKNOWLEDGE FUNCTION
-  const handleAcknowledge = async (item, index) => {
-    try {
-      setAckLoading((prev) => ({ ...prev, [index]: true }));
+  // ACKNOWLEDGE FUNCTION
+// ACKNOWLEDGE FUNCTION
+const handleAcknowledge = async (item, index) => {
 
-      await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "acknowledge",
-          rowId: item.rowId || item.id || item.ID || index,
+  try {
 
-          // SEND ACKNOWLEDGEMENT TO RECIPIENT
-          recipient:
-            item.Email ||
-            item.email ||
-            item.Recipient ||
-            item.recipient,
+    setAckLoading(prev => ({
+      ...prev,
+      [index]: true
+    }));
 
-          subject: getSubject(item),
-          sender: getSender(item),
-        }),
-      });
 
-      // UPDATE UI WITHOUT RELOAD
-      setData((prev) =>
-        prev.map((d, i) =>
-          i === index
-            ? {
-                ...d,
-                Acknowledged: "Acknowledged",
-              }
-            : d
-        )
-      );
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setAckLoading((prev) => ({ ...prev, [index]: false }));
-    }
-  };
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify({
+        action: "acknowledge",
+        // only needed for Gmail reply
+        threadId:
+          item["Thread ID"]
+      })
+    });
+
+    const result = await res.json();
+
+    if (!result.success) { throw new Error( result.error || "Acknowledge failed");}
+
+    // change button to green
+    setData(prev => prev.map(row =>
+        row["Thread ID"] === item["Thread ID"] ?
+        {
+          ...row,
+          Acknowledged:
+            "Acknowledged"
+        }:
+        row
+      )
+    );
+  } catch(error) {
+    console.error(
+      "Acknowledge failed:",
+      error
+    );
+    alert(
+      error.message
+    );
+
+  } finally {
+    setAckLoading(prev => ({
+      ...prev,
+      [index]: false
+    }));
+  }
+};
 
   const getGroupDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -339,7 +356,7 @@ export default function Replies() {
 
                         <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
                           {/* ACKNOWLEDGE BUTTON */}
-                          <button
+                          {/* <button
                             onClick={() =>
                               !acknowledged &&
                               handleAcknowledge(item, idx)
@@ -360,7 +377,7 @@ export default function Replies() {
                               : acknowledged
                               ? "Acknowledged"
                               : "Acknowledge"}
-                          </button>
+                          </button> */}
 
                           <button
                             onClick={() =>
