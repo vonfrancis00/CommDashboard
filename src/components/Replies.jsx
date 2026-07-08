@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { request } from "../services/api";
 import {
   ReplyAll,
   Forward,
@@ -12,8 +13,6 @@ import {
   Calendar,
 } from "lucide-react";
 
-const WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbzKVZ-0_LlN4Ryjc3Rjsmlo4s4ub2zUuQgqjQfSEaJfHHFEe6smMNTPnNnL0hoZ7Cjy3A/exec";
 
 export default function Replies() {
   const [data, setData] = useState([]);
@@ -22,23 +21,41 @@ export default function Replies() {
   const [error, setError] = useState("");
 
   const fetchReplies = async () => {
-    try {
-      setLoading(true);
-      setError("");
 
-      const res = await fetch(`${WEB_APP_URL}?sheet=Notifications`);
-      const json = await res.json();
+  try {
 
-      if (!res.ok) throw new Error("Failed to load data");
+    setLoading(true);
+    setError("");
 
-      setData(Array.isArray(json) ? json : []);
-    } catch (err) {
-      setError(err.message || "Failed to connect to the database");
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const json = await request(
+      "getNotifications",
+      "GET"
+    );
+
+    setData(
+      Array.isArray(json)
+        ? json
+        : []
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    setError(
+      err.message ||
+      "Failed to connect to the database"
+    );
+
+    setData([]);
+
+  } finally {
+
+    setLoading(false);
+
+  }
+
+};
 
   useEffect(() => {
     fetchReplies();
@@ -49,13 +66,31 @@ export default function Replies() {
     i?.Subject || i?.subject || i?.Title || "Untitled Communication";
 
   const getSender = (i) =>
-    i?.Sender || i?.From || i?.Name || "Anonymous";
+  i?.Sender ||
+  i?.sender ||
+  i?.From ||
+  i?.from ||
+  i?.["Received From"] ||
+  i?.receivedFrom ||
+  i?.Email ||
+  i?.email ||
+  i?.Name ||
+  i?.name ||
+  "Anonymous";
 
   const getMessage = (i) =>
     i?.Message || i?.message || i?.Body || "";
 
   const getTimeRaw = (i) =>
-    i?.Time || i?.time || i?.Timestamp || "";
+  i?.Time ||
+  i?.time ||
+  i?.Timestamp ||
+  i?.timestamp ||
+  i?.Date ||
+  i?.date ||
+  i?.["Date Received"] ||
+  i?.dateReceived ||
+  "";
 
   const getType = (item) => {
     const raw = String(item?.Type || item?.type || "").toLowerCase();

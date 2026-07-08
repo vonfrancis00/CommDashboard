@@ -104,7 +104,7 @@ onLogin();
         <div className="relative z-10 max-w-lg text-center px-3">
 
           <img
-            src="https://raw.githubusercontent.com/vonfrancis00/image/main/logo-dtms.png"
+            src="/logo-dtms.png"
             alt="Logo"
             className="w-88 mx-auto drop-shadow-2xl"
           />

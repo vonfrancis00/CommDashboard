@@ -63,12 +63,26 @@ export default function TimelineDot({
 const compiledTimeline = [
   {
     status: data[0].oldStatus || "No Status",
-    timestamp: formatTimelineDate(dateReceived) || "Initial Status",
+    timestamp:
+      formatTimelineDate(dateReceived) ||
+      "Initial Status",
+
+    user:
+      data[0].updatedBy ||
+      "System",
   },
 
   ...data.map((item) => ({
     status: item.newStatus,
-    timestamp: formatTimelineDate(item.timestamp),
+
+    timestamp:
+      formatTimelineDate(
+        item.timestamp
+      ),
+
+    user:
+      item.updatedBy ||
+      "Unknown User",
   })),
 ];
 
@@ -172,6 +186,10 @@ const compiledTimeline = [
                           <p className="mt-1 text-[11px] font-medium text-slate-400 whitespace-nowrap">
                             {item.timestamp}
                           </p>
+
+                          <p className="mt-1 text-[11px] font-bold text-indigo-500">
+                            {item.user}
+                          </p>
                         </div>
                       )}
 
@@ -199,6 +217,9 @@ const compiledTimeline = [
                           </h3>
                           <p className="mt-1 text-[11px] font-medium text-slate-400 whitespace-nowrap">
                             {item.timestamp}
+                          </p>
+                          <p className="mt-1 text-[11px] font-bold text-indigo-500">
+                            {item.user}
                           </p>
                         </div>
                       )}
