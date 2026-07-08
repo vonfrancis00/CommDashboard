@@ -42,7 +42,7 @@ let dashboardCache = null;
 let dashboardLoaded = false;
 
 const cardStyle =
-  "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
+  "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
 
 function safe(value) {
   return value === null || value === undefined ? "" : String(value).trim();
@@ -153,7 +153,7 @@ function ModernStatCard({
         </div>
 
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">{value}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{value}</h2>
           <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
             {label}
           </p>
@@ -935,7 +935,7 @@ const toggleSelectAll = () => {
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
 
   return (
-    <div className="relative z-10 mx-auto max-w-[1400px] px-8 py-12">
+    <div className="relative z-10 mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-12">
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all duration-300">
           <div className="w-full max-w-md scale-100 overflow-hidden rounded-[2rem] border border-white/60 bg-white/90 p-8 shadow-2xl transition-all duration-300">
@@ -1140,7 +1140,7 @@ const toggleSelectAll = () => {
             </span>
             Google Email Live
           </div>
-          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900">
             Communication <span className="font-bold italic text-slate-400">Hub</span>
           </h1>
 
@@ -1153,13 +1153,13 @@ const toggleSelectAll = () => {
           onClick={() => {
             fetchDashboardStats();
             fetchData(true);}}
-          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+          className="flex w-full sm:w-auto justify-center items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
         >
           <RefreshCw className={`h-4 w-4 ${loading || isRefreshing ? "animate-spin" : ""}`} />
           Refresh Data
         </button>
       </div>
-          <div className="mb-8 grid gap-5 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mb-8 grid gap-3 sm:gap-5 grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <ModernStatCard
               icon={Calendar}
               label="Today"
@@ -1296,7 +1296,7 @@ const toggleSelectAll = () => {
         </div>
 
       <div className="mb-12 grid gap-6 lg:grid-cols-3">
-        <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md lg:col-span-2">
+        <div className="min-w-0 rounded-[2rem] border border-white bg-white/60 p-4 sm:p-8 shadow-sm backdrop-blur-md lg:col-span-2">
           <div className="mb-8 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-lg font-bold">
               <Clock className="h-5 w-5 text-indigo-500" /> Volume Over Time
@@ -1378,7 +1378,7 @@ const toggleSelectAll = () => {
       </div>
 
       <div className="flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
-        <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-8">
+        <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-4 sm:p-8">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
             <div>
               <h2 className="text-2xl font-black tracking-tight text-slate-900">Data Explorer</h2>
@@ -1390,19 +1390,19 @@ const toggleSelectAll = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <div className="group relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search anything..."
-                  className="w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
+                  className="w-full sm:w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
 
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
+              <div className="flex w-full sm:w-auto items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm overflow-x-auto">
                 <Calendar className="h-4 w-4 text-indigo-500" />
 
                 <input
@@ -1451,12 +1451,12 @@ const toggleSelectAll = () => {
           </div>
         </div>
                 {selectedRows.length > 0 && (
-  <div className="flex items-center justify-between border-b border-slate-200 bg-indigo-50 px-6 py-4">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 bg-indigo-50 px-4 sm:px-6 py-4">
     <div className="text-sm font-bold text-slate-700">
       {selectedRows.length} record{selectedRows.length > 1 ? "s" : ""} selected
     </div>
 
-    <div className="flex items-center gap-3">
+    <div className="flex flex-col sm:flex-row gap-3">
 
       <select
         defaultValue=""
@@ -1489,8 +1489,8 @@ const toggleSelectAll = () => {
     </div>
   </div>
 )}
-        <div ref={tableContainerRef} className="max-h-[80vh] overflow-y-auto overflow-x-auto">
-          <table className="w-full border-separate border-spacing-0">
+        <div ref={tableContainerRef} className="max-h-[80vh] overflow-auto">
+          <table className="min-w-[1000px] w-full border-separate border-spacing-0">
             <thead className="sticky top-0 z-20">
               <tr className="bg-white/95 backdrop-blur-md">
                 <th className="border-b border-slate-100 px-4 py-5 text-center">
@@ -1669,7 +1669,7 @@ const toggleSelectAll = () => {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 bg-slate-50/80 p-4 sm:p-8">
           <div className="flex h-10 w-24 items-center justify-center rounded-xl border border-slate-200 bg-white font-black text-slate-900 shadow-sm">
             {page} <span className="mx-2 font-light text-slate-300">/</span> {totalPages}
           </div>

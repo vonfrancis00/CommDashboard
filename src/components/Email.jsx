@@ -7,9 +7,10 @@ import {
   AtSign,
   Sparkles,
   ArrowLeft,
-  Save,
+  Trash2,
   CheckCircle2,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 
 // Helper for escaping HTML
@@ -27,22 +28,20 @@ const StatusModal = ({ isOpen, type, message, onClose }) => {
   const isSuccess = type === "success";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-sm animate-in fade-in zoom-in duration-200 rounded-[2rem] bg-white p-8 shadow-2xl text-center">
-        <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isSuccess ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-          {isSuccess ? (
-            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-          ) : (
-            <AlertCircle className="h-10 w-10 text-rose-500" />
-          )}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-sm scale-100 animate-in zoom-in-95 duration-200 rounded-[2rem] bg-white p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] text-center border border-slate-100">
+        <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl rotate-3 transition-transform hover:rotate-0 ${isSuccess ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'}`}>
+          {isSuccess ? <CheckCircle2 className="h-8 w-8" /> : <AlertCircle className="h-8 w-8" />}
         </div>
-        <h3 className="text-xl font-black text-slate-900">{isSuccess ? "Success!" : "Action Required"}</h3>
-        <p className="mt-2 text-sm font-medium text-slate-500 leading-relaxed">{message}</p>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight">{isSuccess ? "Sent Successfully" : "Action Required"}</h3>
+        <p className="mt-3 text-sm font-medium text-slate-500 leading-relaxed">{message}</p>
         <button
           onClick={onClose}
-          className="mt-6 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white transition-transform active:scale-95"
+          className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white tracking-wide transition-all active:scale-[0.98] ${
+            isSuccess ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20' : 'bg-slate-900 hover:bg-slate-800'
+          }`}
         >
-          {isSuccess ? "Awesome" : "Try Again"}
+          {isSuccess ? "Perfect" : "Review Fields"}
         </button>
       </div>
     </div>
@@ -115,104 +114,158 @@ export default function Email({ setActiveView }) {
     }
   };
 
+  const handleClear = () => {
+    if (window.confirm("Are you sure you want to discard this draft?")) {
+      setTo(""); setCc(""); setSubject(""); setMessage(""); setAttachments([]);
+    }
+  };
+
   return (
-    <div className="relative z-10 mx-auto max-w-[1000px] px-8 py-12">
-      <StatusModal 
-        isOpen={modal.open} 
-        type={modal.type} 
-        message={modal.message} 
-        onClose={() => setModal({ ...modal, open: false })} 
-      />
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100/50 mx-auto max-w-5xl px-4 py-12 sm:px-8">
+      
+      {/* Background Decorative Blob */}
+      <div className="absolute top-0 right-1/4 -z-10 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
+      <div className="absolute bottom-10 left-1/4 -z-10 h-96 w-96 rounded-full bg-purple-200/20 blur-3xl" />
 
       {/* Header */}
-      <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-600/5 px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-indigo-600">
-            <Sparkles className="h-3.5 w-3.5" />
-            Secure Communication
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-900 px-4 py-1 text-[11px] font-black uppercase tracking-widest text-white shadow-md shadow-blue-500/20">
+            <Sparkles className="h-3 w-3 animate-pulse" />
+            Secure Terminal
           </div>
-          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900">
-            New <span className="font-bold italic text-slate-400">Correspondence</span>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+            New <span className="bg-blue-900 bg-clip-text text-transparent">Correspondence</span>
           </h1>
         </div>
+        
         <button
           onClick={() => setActiveView("dashboard")}
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+          className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-900 hover:text-white hover:border-slate-900 hover:shadow-md active:scale-95"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 text-slate-400 group-hover:text-white transition-colors" />
           Exit Composer
         </button>
       </div>
 
-      {/* Form Section */}
-      <div className="grid gap-8 grid-cols-1">
-        <div className="overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
-          <div className="border-b border-slate-100 bg-slate-50/50 p-8">
-            <h2 className="text-xl font-black text-slate-900">Message Details</h2>
+      {/* Main Glassmorphic Panel */}
+      <div className="overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/70 backdrop-blur-md shadow-[0_32px_64px_-16px_rgba(15,23,42,0.08)]">
+        
+        {/* Input Fields Stack */}
+        <div className="p-8 pb-4 space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            
+            {/* Recipient Field */}
+            <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-indigo-500/80">Recipient</label>
+              <div className="mt-1 flex items-center gap-2.5">
+                <User className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+                <input 
+                  type="email" 
+                  value={to} 
+                  onChange={(e) => setTo(e.target.value)} 
+                  placeholder="name@company.com"
+                  className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400" 
+                />
+              </div>
+            </div>
+
+            {/* CC Field */}
+            <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Carbon Copy</label>
+              <div className="mt-1 flex items-center gap-2.5">
+                <AtSign className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
+                <input
+                  type="text"
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  placeholder="Optional copies"
+                  autoComplete="off"
+                  name="cc-disabled-autofill"
+                  className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
           </div>
 
-          <div className="space-y-5 p-8">
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">Recipient</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="name@email.com"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 py-3.5 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white" />
-                </div>
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">CC</label>
-                <div className="relative">
-                  <AtSign className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="cc@email.com"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 py-3.5 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white" />
-                </div>
-              </div>
-            </div>
+          {/* Subject Field */}
+          <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Subject Thread</label>
+            <input 
+              type="text" 
+              value={subject} 
+              onChange={(e) => setSubject(e.target.value)} 
+              placeholder="What is this correspondence regarding?"
+              className="mt-1 w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" 
+            />
+          </div>
+        </div>
 
-            <div>
-              <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">Subject</label>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject line"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white" />
-            </div>
+        {/* Rich Body Text Area */}
+        <div className="px-8 pb-8">
+          <div className="rounded-3xl border border-slate-200/60 bg-white p-4 shadow-inner focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
+            <textarea 
+              value={message} 
+              onChange={(e) => setMessage(e.target.value)} 
+              placeholder="Begin typing message content here..." 
+              rows={13}
+              className="w-full resize-y bg-transparent p-2 text-sm font-medium leading-relaxed text-slate-800 outline-none placeholder:text-slate-400" 
+            />
 
-            <div>
-              <label className="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">Body</label>
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Compose your message..." rows={12}
-                className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white" />
-            </div>
-
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                  <Paperclip className="h-4 w-4 text-indigo-500" /> Attachments
+            {/* Elevated Dynamic Attachments Area */}
+            <div className="mt-4 rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                  <Paperclip className="h-4 w-4 text-indigo-500" /> 
+                  Files attached {attachments.length > 0 && <span className="ml-1 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black text-indigo-600">{attachments.length}</span>}
                 </span>
-                <label className="cursor-pointer rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs font-bold shadow-sm hover:bg-slate-50">
-                  Upload Files
+                
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-white border border-slate-200/80 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300">
+                  Add Asset
                   <input type="file" multiple className="hidden" onChange={handleAttachmentChange} />
                 </label>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {attachments.map((file, i) => (
-                  <div key={i} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
-                    {file.name}
-                    <button onClick={() => removeAttachment(i)}><X className="h-3 w-3 text-rose-500" /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="flex gap-3 pt-2">
-              <button onClick={handleSend} disabled={sending}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-4 text-sm font-bold text-white shadow-xl hover:bg-indigo-600 disabled:opacity-50 transition-all">
-                <Send className="h-4 w-4" /> {sending ? "Sending..." : "Send Message"}
-              </button>
-              <button onClick={() => {setTo(""); setCc(""); setSubject(""); setMessage(""); setAttachments([]);}}
-                className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
-                <Save className="h-4 w-4" />
-              </button>
+              {attachments.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200/40 pt-3">
+                  {attachments.map((file, i) => (
+                    <div key={i} className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white pl-3 pr-2 py-1.5 text-xs font-bold text-slate-600 shadow-sm animate-in fade-in zoom-in-95 duration-150">
+                      <FileText className="h-3.5 w-3.5 text-indigo-500" />
+                      <span className="max-w-[150px] truncate">{file.name}</span>
+                      <button 
+                        onClick={() => removeAttachment(i)}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            
+            <button 
+              onClick={handleClear}
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+            >
+              <Trash2 className="h-4 w-4" />
+              Discard Draft
+            </button>
+
+            <button 
+              onClick={handleSend} 
+              disabled={sending}
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 px-8 py-4 text-sm font-bold text-white shadow-xl shadow-indigo-950/20 transition-all hover:from-indigo-600 hover:to-indigo-700 hover:shadow-indigo-600/30 disabled:opacity-50 active:scale-[0.98]"
+            >
+              <Send className={`h-4 w-4 ${sending ? "animate-bounce" : ""}`} /> 
+              {sending ? "Dispatched Transmission..." : "Send Correspondence"}
+            </button>
+            
           </div>
         </div>
       </div>
