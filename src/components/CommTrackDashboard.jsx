@@ -986,9 +986,10 @@ const toggleSelectAll = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={() => {
-                        if (modalConfig.onConfirm) modalConfig.onConfirm();
-                        closeModal();
+                      onClick={async () => {
+                        if (modalConfig.onConfirm) {
+                          await modalConfig.onConfirm();
+                        }
                       }}
                       className="rounded-2xl bg-red-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-red-600/20 transition hover:bg-red-500"
                     >
@@ -1283,23 +1284,13 @@ const toggleSelectAll = () => {
               )
             }
           />
-
-          
-
-          
-
-          
-
-          
-
-          
         </div>
 
       <div className="mb-12 grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 rounded-[2rem] border border-white bg-white/60 p-4 sm:p-8 shadow-sm backdrop-blur-md lg:col-span-2">
           <div className="mb-8 flex items-center justify-between">
             <h3 className="flex items-center gap-2 text-lg font-bold">
-              <Clock className="h-5 w-5 text-indigo-500" /> Volume Over Time
+              <Clock className="h-5 w-5 text-indigo-500" /> Volume Per Month
             </h3>
 
             <select
@@ -1379,10 +1370,10 @@ const toggleSelectAll = () => {
 
       <div className="flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
         <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-4 sm:p-8">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-            <div>
-              <h2 className="text-2xl font-black tracking-tight text-slate-900">Data Explorer</h2>
-              <div className="mt-1 flex items-center gap-2">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
+            <div className="shrink-0 min-w-[220px]">
+              <h2 className="text-xl font-black tracking-tight text-slate-900">Data Explorer</h2>
+              <div className="mt-2 flex items-center gap-2 whitespace-nowrap">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
                 <p className="text-sm font-bold text-slate-400">
                   {filteredRows.length} entries analyzed
@@ -1390,13 +1381,13 @@ const toggleSelectAll = () => {
               </div>
             </div>
 
-            <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
               <div className="group relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search anything..."
-                  className="w-full sm:w-64 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
+                  className="w-full sm:w-72 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
@@ -1436,7 +1427,7 @@ const toggleSelectAll = () => {
               </div>
 
               <select
-                className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-5 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
+                className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-6 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
                 value={remarkFilter}
                 onChange={(e) => setRemarkFilter(e.target.value)}
               >
@@ -1451,81 +1442,89 @@ const toggleSelectAll = () => {
           </div>
         </div>
                 {selectedRows.length > 0 && (
-  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 bg-indigo-50 px-4 sm:px-6 py-4">
-    <div className="text-sm font-bold text-slate-700">
-      {selectedRows.length} record{selectedRows.length > 1 ? "s" : ""} selected
-    </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 bg-indigo-50 px-4 sm:px-6 py-4">
+              <div className="text-sm font-bold text-slate-700">
+                {selectedRows.length} record{selectedRows.length > 1 ? "s" : ""} selected
+              </div>
 
-    <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
 
-      <select
-        defaultValue=""
-        onChange={(e) => {
-          if (!e.target.value) return;
-          updateMultipleRemarks(e.target.value);
-          e.target.value = "";
-        }}
-        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold"
-      >
-        <option value="">Change Remarks</option>
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    updateMultipleRemarks(e.target.value);
+                    e.target.value = "";
+                  }}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold"
+                >
+                  <option value="">Change Remarks</option>
 
-        {remarkOptions
-          .filter(Boolean)
-          .map((remark) => (
-            <option key={remark} value={remark}>
-              {remark}
-            </option>
-          ))}
-      </select>
+                  {remarkOptions
+                    .filter(Boolean)
+                    .map((remark) => (
+                      <option key={remark} value={remark}>
+                        {remark}
+                      </option>
+                    ))}
+                </select>
 
-      <button
-        onClick={deleteMultipleRecords}
-        className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-      >
-        <Trash2 className="h-4 w-4" />
-        Delete Selected
-      </button>
+                <button
+                  onClick={deleteMultipleRecords}
+                  className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected
+                </button>
 
-    </div>
-  </div>
-)}
-        <div ref={tableContainerRef} className="max-h-[80vh] overflow-auto">
-          <table className="min-w-[1000px] w-full border-separate border-spacing-0">
-            <thead className="sticky top-0 z-20">
-              <tr className="bg-white/95 backdrop-blur-md">
-                <th className="border-b border-slate-100 px-4 py-5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      paginatedRows.length > 0 &&
-                      paginatedRows.every((r) =>
-                        selectedRows.includes(r.refNumber)
-                      )
-                    }
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4"
-                  />
-                </th>
-                <th className="border-b border-slate-100 px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Reference
-                </th>
-                <th className="border-b border-slate-100 px-6 py-5 text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Recipient
-                </th>
-                <th className="border-b border-slate-100 px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Timestamp
-                </th>
-                <th className="border-b border-slate-100 px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Subject
-                </th>
-                <th className="border-b border-slate-100 px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Remarks
-                </th>
-                <th className="border-b border-slate-100 px-8 py-5 text-center text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
+              </div>
+            </div>
+          )}
+        <div ref={tableContainerRef} className="max-h-[75vh] overflow-y-auto overflow-x-hidden">
+          <table className="w-full table-fixed border-separate border-spacing-0">
+          <thead className="sticky top-0 z-20">
+          <tr className="bg-white/95 backdrop-blur-md">
+
+          <th className="w-[4%] border-b border-slate-100 py-4 text-center">
+            <input
+              type="checkbox"
+              checked={
+                paginatedRows.length > 0 &&
+                paginatedRows.every((r)=>
+                  selectedRows.includes(r.refNumber)
+                )
+              }
+              onChange={toggleSelectAll}
+              className="h-4 w-4"
+            />
+          </th>
+
+          <th className="w-[11%] border-b border-slate-100 px-2 py-4 text-left text-[10px] font-black uppercase text-slate-400">
+          Reference
+          </th>
+
+          <th className="w-[13%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          Recipient
+          </th>
+
+          <th className="w-[9%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          Timestamp
+          </th>
+
+          <th className="w-[35%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          Subject
+          </th>
+
+          <th className="w-[14%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          Status
+          </th>
+
+          <th className="w-[14%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          Actions
+          </th>
+
+          </tr>
+          </thead>
 
             <tbody className="divide-y divide-slate-50">
               {loading ? (
@@ -1549,9 +1548,9 @@ const toggleSelectAll = () => {
 
                   return (
                     <tr
-                      key={row.refNumber || idx}
-                      className="group transition-all duration-200 hover:bg-slate-50/50"
-                    >
+ key={row.refNumber || idx}
+ className="group h-[82px] transition-all duration-200 hover:bg-slate-50/50"
+>
                       <td className="px-4 py-6 text-center">
                         <input
                           type="checkbox"
@@ -1560,18 +1559,18 @@ const toggleSelectAll = () => {
                           className="h-4 w-4"
                         />
                       </td>
-                      <td className="relative px-8 py-6 align-top">
+                      <td className="relative px-3 py-4 align-top">
                         <div className="absolute bottom-0 left-0 top-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100" />
                         <span className="font-mono text-[10px] font-bold text-slate-400">
                           {row.refNumber || "---"}
                         </span>
                       </td>
 
-                      <td className="px-6 py-6 align-top text-center font-bold text-slate-900">
+                      <td className="px-3 py-4 align-top text-center font-bold text-slate-900">
                         {row.receivedFrom || "---"}
                       </td>
 
-                      <td className="px-6 py-6 align-top">
+                      <td className="px-3 py-4 align-top">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-slate-700 text-center">
                             {datePart || "---"}
@@ -1582,18 +1581,18 @@ const toggleSelectAll = () => {
                         </div>
                       </td>
 
-                      <td className="px-8 py-6 align-top">
+                      <td className="px-3 py-4 align-top">
                         <p
-                          className={`cursor-pointer text-[15px] font-bold leading-snug text-slate-800 ${
-                            isExpanded ? "" : "line-clamp-2"
-                          }`}
+ className={`cursor-pointer break-words text-sm font-bold leading-snug text-slate-800 ${
+ isExpanded ? "" : "line-clamp-2"
+ }`}
                           onClick={() => toggleRow(row.refNumber)}
                         >
                           {row.subject || "---"}
                         </p>
                       </td>
 
-                      <td className="px-8 py-6 align-top text-center">
+                      <td className="px-3 py-4 align-top text-center">
                         <div className="flex items-center justify-center gap-2">
                           <select
                             value={row.remarks || ""}
@@ -1619,7 +1618,7 @@ const toggleSelectAll = () => {
                         </div>
                       </td>
 
-                      <td className="px-8 py-6 align-top text-center">
+                      <td className="px-3 py-4 align-top text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => openTimeline(row.refNumber)}
