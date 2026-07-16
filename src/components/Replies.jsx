@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { request } from "../services/api";
 import {
   ReplyAll,
@@ -11,6 +11,8 @@ import {
   MoreHorizontal,
   ChevronRight,
   Calendar,
+  CheckCheck,
+  LoaderCircle,
 } from "lucide-react";
 
 
@@ -19,6 +21,9 @@ export default function Replies() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [acknowledging, setAcknowledging] = useState("");
+  const [acknowledged, setAcknowledged] = useState(() => new Set());
+  const [acknowledgeError, setAcknowledgeError] = useState({});
 
   const fetchReplies = async () => {
 
@@ -80,6 +85,75 @@ export default function Replies() {
 
   const getMessage = (i) =>
     i?.Message || i?.message || i?.Body || "";
+
+  const getSenderEmail = (i) => {
+    const raw = String(
+      i?.SenderEmail ||
+        i?.senderEmail ||
+        i?.Email ||
+        i?.email ||
+        i?.FromEmail ||
+        i?.fromEmail ||
+        i?.Sender ||
+        i?.sender ||
+        i?.From ||
+        i?.from ||
+        ""
+    );
+    const angleAddress = raw.match(/<([^<>\s]+@[^<>\s]+)>/);
+    const plainAddress = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+
+    return (angleAddress?.[1] || plainAddress?.[0] || "").trim();
+  };
+
+  const getItemKey = (item, index = 0) =>
+    String(
+      item?.Id ||
+        item?.id ||
+        item?.NotificationId ||
+        item?.notificationId ||
+        item?.["Thread ID"] ||
+        item?.ThreadId ||
+        item?.threadId ||
+        `${getSubject(item)}-${getSenderEmail(item)}-${getTimeRaw(item)}-${index}`
+    );
+
+  const acknowledgeReply = async (item, index) => {
+    const key = getItemKey(item, index);
+    const threadId = String(item?.["Thread ID"] || item?.ThreadId || item?.threadId || "").trim();
+
+    try {
+      if (!threadId) {
+        throw new Error("This message does not include a Gmail thread ID.");
+      }
+
+      setAcknowledging(key);
+      setAcknowledgeError((current) => ({ ...current, [key]: "" }));
+
+      const result = await request("acknowledgeRecord", "POST", {
+        threadId,
+        refNumber:
+          item?.["Ref number"] ||
+          item?.["Reference Number"] ||
+          item?.refNumber ||
+          "",
+        subject: getSubject(item),
+      });
+
+      if (!result?.success) {
+        throw new Error(result?.error || result?.message || "Acknowledgement could not be sent.");
+      }
+
+      setAcknowledged((current) => new Set(current).add(key));
+    } catch (err) {
+      setAcknowledgeError((current) => ({
+        ...current,
+        [key]: err.message || "Acknowledgement could not be sent.",
+      }));
+    } finally {
+      setAcknowledging("");
+    }
+  };
 
   const getTimeRaw = (i) =>
   i?.Time ||
@@ -251,6 +325,13 @@ export default function Replies() {
                 <div className="space-y-3">
                   {items.map((item, idx) => {
                     const isFwd = getType(item) === "forward";
+                    const itemKey = getItemKey(item, idx);
+                    const isAcknowledging = acknowledging === itemKey;
+                    const isAcknowledged =
+                      acknowledged.has(itemKey) ||
+                      String(item?.Acknowledged || item?.acknowledged || "")
+                        .trim()
+                        .toLowerCase() === "acknowledged";
 
                     return (
                       <div
@@ -319,6 +400,44 @@ export default function Replies() {
                         </div>
 
                         <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
+
+                          <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => acknowledgeReply(item, idx)}
+                                disabled={isAcknowledging || isAcknowledged}
+                                title={
+                                  getSenderEmail(item)
+                                    ? `Send an acknowledgement to ${getSenderEmail(item)}`
+                                    : "Send an acknowledgement to the message sender"
+                                }
+                                className={`h-10 px-4 flex items-center gap-2 rounded-xl font-bold text-xs transition-all shadow-sm disabled:cursor-not-allowed ${
+                                  isAcknowledged
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white disabled:opacity-60"
+                                }`}
+                              >
+                                {isAcknowledging ? (
+                                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCheck className="h-4 w-4" />
+                                )}
+                                {isAcknowledging
+                                  ? "Sending..."
+                                  : isAcknowledged
+                                    ? "Acknowledged"
+                                    : "Acknowledge"}
+                              </button>
+
+                              {acknowledgeError[itemKey] && (
+                                <p
+                                  role="alert"
+                                  className="absolute right-0 top-12 z-10 w-64 rounded-lg border border-rose-100 bg-white p-2 text-[11px] font-semibold text-rose-600 shadow-lg"
+                                >
+                                  {acknowledgeError[itemKey]}
+                                </p>
+                              )}
+                          </div>
 
                           <button
                             onClick={() =>

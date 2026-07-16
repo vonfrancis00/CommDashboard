@@ -1,52 +1,61 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  Send,
-  Paperclip,
-  X,
-  User,
-  AtSign,
-  Sparkles,
-  ArrowLeft,
-  Trash2,
-  CheckCircle2,
   AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
   FileText,
+  Info,
+  Mail,
+  Paperclip,
+  Send,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+  X,
 } from "lucide-react";
 
-// Helper for escaping HTML
-const escapeHtml = (str = "") =>
-  str
+const emptyModal = { open: false, type: "success", message: "" };
+
+const escapeHtml = (value = "") =>
+  value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-// --- Status Modal Component ---
-const StatusModal = ({ isOpen, type, message, onClose }) => {
-  if (!isOpen) return null;
-  const isSuccess = type === "success";
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+function StatusModal({ modal, onClose, onSuccess }) {
+  if (!modal.open) return null;
+
+  const isSuccess = modal.type === "success";
+  const closeModal = () => {
+    onClose();
+    if (isSuccess) onSuccess();
+  };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-      <div className="w-full max-w-sm scale-100 animate-in zoom-in-95 duration-200 rounded-[2rem] bg-white p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] text-center border border-slate-100">
-        <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl rotate-3 transition-transform hover:rotate-0 ${isSuccess ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'}`}>
-          {isSuccess ? <CheckCircle2 className="h-8 w-8" /> : <AlertCircle className="h-8 w-8" />}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-5 backdrop-blur-sm" role="presentation">
+      <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="status-title" aria-describedby="status-message">
+        <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${isSuccess ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+          {isSuccess ? <CheckCircle2 size={29} /> : <AlertCircle size={29} />}
         </div>
-        <h3 className="text-2xl font-black text-slate-900 tracking-tight">{isSuccess ? "Sent Successfully" : "Action Required"}</h3>
-        <p className="mt-3 text-sm font-medium text-slate-500 leading-relaxed">{message}</p>
-        <button
-          onClick={onClose}
-          className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white tracking-wide transition-all active:scale-[0.98] ${
-            isSuccess ? 'bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20' : 'bg-slate-900 hover:bg-slate-800'
-          }`}
-        >
-          {isSuccess ? "Perfect" : "Review Fields"}
+        <h2 id="status-title" className="mt-5 text-xl font-bold text-slate-950">
+          {isSuccess ? "Message sent" : "Unable to send"}
+        </h2>
+        <p id="status-message" className="mt-2 text-sm leading-6 text-slate-500">{modal.message}</p>
+        <button type="button" onClick={closeModal} autoFocus className="mt-6 h-11 w-full rounded-xl bg-blue-700 text-sm font-semibold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200">
+          {isSuccess ? "Return to dashboard" : "Review message"}
         </button>
       </div>
     </div>
   );
-};
+}
 
 export default function Email({ setActiveView }) {
   const [to, setTo] = useState("");
@@ -55,220 +64,198 @@ export default function Email({ setActiveView }) {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState([]);
   const [sending, setSending] = useState(false);
-  
-  const [modal, setModal] = useState({ open: false, type: "success", message: "" });
+  const [modal, setModal] = useState(emptyModal);
 
-  const showStatus = (type, message) => setModal({ open: true, type, message });
+  const hasDraft = Boolean(to || cc || subject || message || attachments.length);
 
-  const handleAttachmentChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments((prev) => [...prev, ...files]);
-    e.target.value = "";
+  const resetComposer = () => {
+    setTo("");
+    setCc("");
+    setSubject("");
+    setMessage("");
+    setAttachments([]);
+  };
+
+  const handleAttachmentChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    setAttachments((current) => [...current, ...files]);
+    event.target.value = "";
   };
 
   const removeAttachment = (index) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const result = reader.result;
-        const base64 = typeof result === "string" ? result.split(",")[1] : "";
-        resolve({ name: file.name, type: file.type || "application/octet-stream", data: base64 });
+        const data = typeof reader.result === "string" ? reader.result.split(",")[1] : "";
+        resolve({ name: file.name, type: file.type || "application/octet-stream", data });
       };
       reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
       reader.readAsDataURL(file);
     });
-  };
 
-  const handleSend = async () => {
+  const handleSend = async (event) => {
+    event.preventDefault();
+
+    if (!to.trim() || !subject.trim() || !message.trim()) {
+      setModal({ open: true, type: "error", message: "Complete the recipient, subject, and message fields before sending." });
+      return;
+    }
+
     try {
-      if (!to.trim() || !subject.trim() || !message.trim()) {
-        showStatus("error", "Please fill in the Recipient, Subject, and Message fields to continue.");
-        return;
-      }
-
       setSending(true);
-      const attachmentData = await Promise.all(attachments.map((file) => fileToBase64(file)));
-      
+      const attachmentData = await Promise.all(attachments.map(fileToBase64));
       const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
       const fullHtmlMessage = `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${safeMessage}</div>`;
 
       const response = await fetch(import.meta.env.VITE_EMAIL_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ to, cc, subject, message: fullHtmlMessage, attachments: attachmentData }),
+        body: JSON.stringify({
+          to: to.trim(),
+          cc: cc.trim(),
+          subject: subject.trim(),
+          message: fullHtmlMessage,
+          attachments: attachmentData,
+        }),
       });
 
       const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || "Failed to send email.");
+      if (!response.ok || !result.success) throw new Error(result.error || "The email service could not send your message.");
 
-      showStatus("success", "Your email has been dispatched successfully.");
-      setTo(""); setCc(""); setSubject(""); setMessage(""); setAttachments([]);
+      resetComposer();
+      setModal({ open: true, type: "success", message: "Your correspondence was delivered successfully." });
     } catch (error) {
-      showStatus("error", error.message || "An unexpected error occurred.");
+      setModal({ open: true, type: "error", message: error.message || "An unexpected error occurred. Please try again." });
     } finally {
       setSending(false);
     }
   };
 
-  const handleClear = () => {
-    if (window.confirm("Are you sure you want to discard this draft?")) {
-      setTo(""); setCc(""); setSubject(""); setMessage(""); setAttachments([]);
-    }
+  const handleDiscard = () => {
+    if (!hasDraft || window.confirm("Discard this draft? This action cannot be undone.")) resetComposer();
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100/50 mx-auto max-w-5xl px-4 py-12 sm:px-8">
-      
-      {/* Background Decorative Blob */}
-      <div className="absolute top-0 right-1/4 -z-10 h-72 w-72 rounded-full bg-indigo-200/30 blur-3xl" />
-      <div className="absolute bottom-10 left-1/4 -z-10 h-96 w-96 rounded-full bg-purple-200/20 blur-3xl" />
+    <main className="min-h-screen bg-[#f5f7fb] px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
+      <StatusModal modal={modal} onClose={() => setModal(emptyModal)} onSuccess={() => setActiveView("dashboard")} />
 
-      {/* Header */}
-      <div className="mb-10 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-900 px-4 py-1 text-[11px] font-black uppercase tracking-widest text-white shadow-md shadow-blue-500/20">
-            <Sparkles className="h-3 w-3 animate-pulse" />
-            Secure Terminal
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-            New <span className="bg-blue-900 bg-clip-text text-transparent">Correspondence</span>
-          </h1>
-        </div>
-        
-        <button
-          onClick={() => setActiveView("dashboard")}
-          className="group inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-900 hover:text-white hover:border-slate-900 hover:shadow-md active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4 text-slate-400 group-hover:text-white transition-colors" />
-          Exit Composer
-        </button>
-      </div>
-
-      {/* Main Glassmorphic Panel */}
-      <div className="overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/70 backdrop-blur-md shadow-[0_32px_64px_-16px_rgba(15,23,42,0.08)]">
-        
-        {/* Input Fields Stack */}
-        <div className="p-8 pb-4 space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            
-            {/* Recipient Field */}
-            <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-indigo-500/80">Recipient</label>
-              <div className="mt-1 flex items-center gap-2.5">
-                <User className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
-                <input 
-                  type="email" 
-                  value={to} 
-                  onChange={(e) => setTo(e.target.value)} 
-                  placeholder="name@company.com"
-                  className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400" 
-                />
-              </div>
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-lg shadow-blue-700/20">
+              <Mail size={21} />
             </div>
-
-            {/* CC Field */}
-            <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-2.5 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Carbon Copy</label>
-              <div className="mt-1 flex items-center gap-2.5">
-                <AtSign className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-focus-within:text-indigo-500" />
-                <input
-                  type="text"
-                  value={cc}
-                  onChange={(e) => setCc(e.target.value)}
-                  placeholder="Optional copies"
-                  autoComplete="off"
-                  name="cc-disabled-autofill"
-                  className="w-full bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-                />
-              </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Official communication</p>
+              <h1 className="mt-1 text-3xl font-bold tracking-[-0.03em] text-slate-950 sm:text-4xl">Compose message</h1>
+              <p className="mt-2 text-sm text-slate-500">Prepare and send official correspondence securely.</p>
             </div>
-
           </div>
 
-          {/* Subject Field */}
-          <div className="group relative rounded-2xl border border-slate-200/60 bg-white px-4 py-3 shadow-sm transition-all focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/5">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Subject Thread</label>
-            <input 
-              type="text" 
-              value={subject} 
-              onChange={(e) => setSubject(e.target.value)} 
-              placeholder="What is this correspondence regarding?"
-              className="mt-1 w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400" 
-            />
-          </div>
-        </div>
+          <button type="button" onClick={() => setActiveView("dashboard")} className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:self-auto">
+            <ArrowLeft size={17} /> Back to dashboard
+          </button>
+        </header>
 
-        {/* Rich Body Text Area */}
-        <div className="px-8 pb-8">
-          <div className="rounded-3xl border border-slate-200/60 bg-white p-4 shadow-inner focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
-            <textarea 
-              value={message} 
-              onChange={(e) => setMessage(e.target.value)} 
-              placeholder="Begin typing message content here..." 
-              rows={13}
-              className="w-full resize-y bg-transparent p-2 text-sm font-medium leading-relaxed text-slate-800 outline-none placeholder:text-slate-400" 
-            />
-
-            {/* Elevated Dynamic Attachments Area */}
-            <div className="mt-4 rounded-2xl bg-slate-50/80 p-4 border border-slate-100">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                  <Paperclip className="h-4 w-4 text-indigo-500" /> 
-                  Files attached {attachments.length > 0 && <span className="ml-1 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black text-indigo-600">{attachments.length}</span>}
-                </span>
-                
-                <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-white border border-slate-200/80 px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300">
-                  Add Asset
-                  <input type="file" multiple className="hidden" onChange={handleAttachmentChange} />
-                </label>
-              </div>
-
-              {attachments.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200/40 pt-3">
-                  {attachments.map((file, i) => (
-                    <div key={i} className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white pl-3 pr-2 py-1.5 text-xs font-bold text-slate-600 shadow-sm animate-in fade-in zoom-in-95 duration-150">
-                      <FileText className="h-3.5 w-3.5 text-indigo-500" />
-                      <span className="max-w-[150px] truncate">{file.name}</span>
-                      <button 
-                        onClick={() => removeAttachment(i)}
-                        className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+        <form onSubmit={handleSend} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label htmlFor="email-to" className="text-sm font-semibold text-slate-700">To <span className="text-red-500">*</span></label>
+                  <div className="relative mt-2">
+                    <UserRound className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input id="email-to" type="text" value={to} onChange={(event) => setTo(event.target.value)} placeholder="recipient@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-400">Separate multiple addresses with commas.</p>
                 </div>
-              )}
+
+                <div>
+                  <label htmlFor="email-cc" className="text-sm font-semibold text-slate-700">Cc <span className="font-normal text-slate-400">(optional)</span></label>
+                  <div className="relative mt-2">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input id="email-cc" type="text" value={cc} onChange={(event) => setCc(event.target.value)} placeholder="copy@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-400">Recipients receive a visible copy.</p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label htmlFor="email-subject" className="text-sm font-semibold text-slate-700">Subject <span className="text-red-500">*</span></label>
+                <input id="email-subject" type="text" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Enter a clear and concise subject" className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+              </div>
             </div>
-          </div>
 
-          {/* Action Toolbar */}
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            
-            <button 
-              onClick={handleClear}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-95"
-            >
-              <Trash2 className="h-4 w-4" />
-              Discard Draft
-            </button>
+            <div className="px-6 py-6 sm:px-8">
+              <div className="mb-2 flex items-center justify-between">
+                <label htmlFor="email-message" className="text-sm font-semibold text-slate-700">Message <span className="text-red-500">*</span></label>
+                <span className="text-xs tabular-nums text-slate-400">{message.length.toLocaleString()} characters</span>
+              </div>
+              <textarea id="email-message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Write your message here..." rows={13} className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
 
-            <button 
-              onClick={handleSend} 
-              disabled={sending}
-              className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 px-8 py-4 text-sm font-bold text-white shadow-xl shadow-indigo-950/20 transition-all hover:from-indigo-600 hover:to-indigo-700 hover:shadow-indigo-600/30 disabled:opacity-50 active:scale-[0.98]"
-            >
-              <Send className={`h-4 w-4 ${sending ? "animate-bounce" : ""}`} /> 
-              {sending ? "Dispatched Transmission..." : "Send Correspondence"}
-            </button>
-            
-          </div>
-        </div>
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Paperclip size={18} /></div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Attachments</p>
+                      <p className="text-xs text-slate-400">Add supporting files to this message.</p>
+                    </div>
+                  </div>
+                  <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:text-blue-700 focus-within:ring-4 focus-within:ring-blue-100">
+                    Choose files
+                    <input type="file" multiple className="sr-only" onChange={handleAttachmentChange} />
+                  </label>
+                </div>
+
+                {attachments.length > 0 && (
+                  <ul className="mt-4 grid gap-2 border-t border-slate-200 pt-4 sm:grid-cols-2">
+                    {attachments.map((file, index) => (
+                      <li key={`${file.name}-${file.lastModified}-${index}`} className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+                        <FileText size={18} className="shrink-0 text-blue-600" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-700">{file.name}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-400">{formatFileSize(file.size)}</p>
+                        </div>
+                        <button type="button" onClick={() => removeAttachment(index)} aria-label={`Remove ${file.name}`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"><X size={16} /></button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+              <button type="button" onClick={handleDiscard} disabled={!hasDraft || sending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 size={17} /> Discard draft</button>
+              <button type="submit" disabled={sending} className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-65">
+                {sending ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Sending...</> : <><Send size={17} /> Send message</>}
+              </button>
+            </footer>
+          </section>
+
+          <aside className="space-y-4 xl:sticky xl:top-8">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck size={18} /></div>
+                <div><p className="text-sm font-semibold text-slate-800">Secure delivery</p><p className="text-xs text-slate-400">Authorized system</p></div>
+              </div>
+              <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+                <p>Review recipient addresses and attachments carefully before sending.</p>
+                <p>Messages sent through this portal may be retained for official records.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-blue-800">
+              <Info size={17} className="mt-0.5 shrink-0" />
+              <p>Required fields are marked with an asterisk. Your message is sent as formatted plain text.</p>
+            </div>
+          </aside>
+        </form>
       </div>
-    </div>
+    </main>
   );
 }

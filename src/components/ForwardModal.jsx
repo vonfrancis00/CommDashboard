@@ -45,6 +45,30 @@ export default function ForwardModal({
     }
     loadSucs();
   }, [isOpen]);
+  useEffect(() => {
+  if (!isOpen) {
+    setSelectedSucs([]);
+    setSearch("");
+  }
+}, [isOpen]);
+  const resetModal = () => {
+  setSelectedSucs([]);
+  setSearch("");
+
+  setData({
+    isOpen: false,
+    refNumber: "",
+    to: "",
+    subject: "",
+    includeOriginalCc: true,
+    originalCc: "",
+  });
+};
+
+const handleClose = () => {
+  resetModal();
+  onClose();
+};
   function toggleSUC(email) {
     let updated;
     if (selectedSucs.includes(email)) {
@@ -99,16 +123,12 @@ export default function ForwardModal({
       )
     );
   async function handleForward() {
-    const success =
-      await onForward();
-    if (success) {
-      setSelectedSucs([]);
-      setData(prev => ({
-        ...prev,
-        to: ""
-      }));
-    }
+  const success = await onForward();
+
+  if (success) {
+    resetModal();
   }
+}
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm p-4">
@@ -130,7 +150,7 @@ export default function ForwardModal({
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          <button onClick={handleClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
             <X size={22}/>
           </button>
         </div>
@@ -267,7 +287,7 @@ export default function ForwardModal({
         </div>
         {/* FOOTER */}
         <div className="flex justify-end gap-3 px-8 py-5 bg-white ">
-          <button onClick={onClose} className=" rounded-xl px-6 py-3 text-xs font-black uppercase hover:bg-red-400">
+          <button onClick={handleClose} className=" rounded-xl px-6 py-3 text-xs font-black uppercase hover:bg-red-400">
             Cancel
           </button>
           <button onClick={handleForward} disabled={isForwarding} className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-black uppercase text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50">

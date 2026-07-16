@@ -290,6 +290,8 @@ const [loadingTimeline, setLoadingTimeline] = useState(null);
     refNumber: "",
     to: "",
     subject: "",
+    includeOriginalCc: true,
+    originalCc: "",
   });
 };
 
