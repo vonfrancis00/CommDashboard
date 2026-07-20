@@ -130,14 +130,8 @@ export default function Replies() {
       setAcknowledging(key);
       setAcknowledgeError((current) => ({ ...current, [key]: "" }));
 
-      const result = await request("acknowledgeRecord", "POST", {
+      const result = await request("sendAcknowledgementEmail", "POST", {
         threadId,
-        refNumber:
-          item?.["Ref number"] ||
-          item?.["Reference Number"] ||
-          item?.refNumber ||
-          "",
-        subject: getSubject(item),
       });
 
       if (!result?.success) {
