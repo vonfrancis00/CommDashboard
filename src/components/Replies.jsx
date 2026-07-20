@@ -202,7 +202,11 @@ export default function Replies() {
 
     const seen = new Set();
 
-    const unique = sorted.filter((item) => {
+    const withoutMe = sorted.filter(
+      (item) => String(getSender(item)).trim().toLowerCase() !== "me"
+    );
+
+    const unique = withoutMe.filter((item) => {
       const key = String(getSubject(item))
         .toLowerCase()
         .trim()
