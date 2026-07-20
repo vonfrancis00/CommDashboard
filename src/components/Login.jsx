@@ -167,10 +167,10 @@ export default function Login({ onLogin }) {
               </div>
             ) : (
               <div>
-                <label htmlFor="username" className="text-sm font-semibold text-slate-700">Email address</label>
+                <label htmlFor="username" className="text-sm font-semibold text-slate-700">CHED Email</label>
                 <div className="relative mt-2">
                   <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
-                  <input id="username" type="email" name="username" value={form.username} onChange={handleChange} placeholder="name@agency.gov.ph" autoComplete="username" required autoFocus className="h-13 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-100" />
+                  <input id="username" type="email" name="username" value={form.username} onChange={handleChange} placeholder="chedemail@ched.gov.ph" autoComplete="username" required autoFocus className="h-13 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-[15px] text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-100" />
                 </div>
               </div>
             )}
