@@ -120,9 +120,14 @@ export default function Replies() {
 
   const acknowledgeReply = async (item, index) => {
     const key = getItemKey(item, index);
+    const threadId = String(item?.["Thread ID"] || item?.ThreadId || item?.threadId || "").trim();
     const recipient = getSenderEmail(item);
 
     try {
+      if (!threadId) {
+        throw new Error("This message does not include a Gmail thread ID.");
+      }
+
       if (!recipient) {
         throw new Error("This message does not include a valid sender email address.");
       }
@@ -131,6 +136,7 @@ export default function Replies() {
       setAcknowledgeError((current) => ({ ...current, [key]: "" }));
 
       const result = await request("sendAcknowledgementEmail", "POST", {
+        threadId,
         to: recipient,
       });
 
