@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   UploadCloud,
   FileText,
@@ -12,7 +12,6 @@ import {
   Tag,
   Users,
   Layers,
-  Sparkles,
   RefreshCw
 } from "lucide-react";
 
@@ -119,7 +118,7 @@ export default function UploadCommunication() {
         text: "Communication logged and archived successfully.",
       });
       resetForm();
-    } catch (err) {
+    } catch {
       setMessage({
         type: "error",
         text: "System encountered an error during submission. Please try again.",
@@ -130,31 +129,39 @@ export default function UploadCommunication() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-10 lg:px-12 text-slate-800 antialiased">
-      <div className="mx-auto max-w-4xl">
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-800 antialiased">
         
         {/* Header Block with subtle badge */}
-        <header className="mb-8 border-b border-slate-200/80 pb-6">
-          <div className="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold tracking-wide text-indigo-700 uppercase mb-3">
-            <Layers className="h-3.5 w-3.5" /> Document Registry
+        <header className="relative overflow-hidden bg-[#071d49] px-4 py-8 text-white sm:px-6 lg:px-8 lg:py-10">
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
+          <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+          <div className="relative mx-auto flex max-w-[1600px] items-start gap-4">
+            <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-lg backdrop-blur-sm">
+              <UploadCloud className="h-6 w-6 text-sky-300" />
+            </div>
+            <div>
+              <div className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-300">
+                <Layers className="h-3.5 w-3.5" /> Document registry
+              </div>
+              <h1 className="text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl">
+                Upload communication
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100/65">
+                Log organizational records, attach verified digital assets, and establish tracking routes across department networks.
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl">
-            Inbound & Outbound Communications
-          </h1>
-          <p className="mt-1.5 text-sm text-slate-500 max-w-2xl leading-relaxed">
-            Log organizational records, attach verified digital assets, and establish tracking routes across department networks.
-          </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <form onSubmit={handleSubmit} className="grid items-start gap-6 xl:grid-cols-2">
           
           {/* Section 1: Metadata Fields */}
-          <section className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-100">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-indigo-500 to-indigo-600" />
+          <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,.06)] sm:p-6">
             
             <div className="mb-5 flex items-center gap-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Communication Parameters
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">
+                Communication parameters
               </h2>
             </div>
             
@@ -170,7 +177,7 @@ export default function UploadCommunication() {
                   value={form.title}
                   onChange={handleChange}
                   placeholder="e.g., FY2026 Q3 Budget Allocation Framework"
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-900 shadow-inner transition placeholder:text-slate-400/80 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 transition placeholder:text-slate-400/80 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
@@ -184,7 +191,7 @@ export default function UploadCommunication() {
                     name="communicationType"
                     value={form.communicationType}
                     onChange={handleChange}
-                    className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50/60 pl-9 pr-8 py-2.5 text-sm text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-8 text-sm text-slate-900 transition focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                   >
                     <option>Memorandum</option>
                     <option>Official Letter</option>
@@ -210,7 +217,7 @@ export default function UploadCommunication() {
                     required
                     value={form.dateReceived}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-9 pr-4 py-2.5 text-sm text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-sm text-slate-900 transition focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
               </div>
@@ -227,7 +234,7 @@ export default function UploadCommunication() {
                     value={form.recipients}
                     onChange={handleChange}
                     placeholder="e.g., Executive Board, HR Department"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-9 pr-4 py-2.5 text-sm text-slate-900 transition placeholder:text-slate-400/80 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-9 pr-4 text-sm text-slate-900 transition placeholder:text-slate-400/80 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
               </div>
@@ -242,19 +249,18 @@ export default function UploadCommunication() {
                   onChange={handleChange}
                   rows={4}
                   placeholder="Provide brief context, cross-references, or tracking instructions..."
-                  className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-900 transition placeholder:text-slate-400/80 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-50"
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 transition placeholder:text-slate-400/80 focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
             </div>
           </section>
 
           {/* Section 2: File Attachments */}
-          <section className="relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-100">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 to-indigo-500" />
+          <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,.06)] sm:p-6">
             
             <div className="mb-5">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Supporting Documentation
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">
+                Supporting documentation
               </h2>
             </div>
 
@@ -269,8 +275,8 @@ export default function UploadCommunication() {
               onClick={openFilePicker}
               className={`group relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition ${
                 dragActive
-                  ? "border-indigo-500 bg-indigo-50/40"
-                  : "border-slate-200 bg-slate-50/30 hover:border-slate-300 hover:bg-slate-50/70"
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/40"
               }`}
             >
               <input
@@ -282,10 +288,10 @@ export default function UploadCommunication() {
               />
 
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-slate-200/60 shadow-sm transition group-hover:scale-105">
-                <UploadCloud className="h-5 w-5 text-indigo-600" />
+                <UploadCloud className="h-5 w-5 text-blue-700" />
               </div>
               <p className="text-sm font-semibold text-slate-800">
-                Drag and drop records here, or <span className="text-indigo-600 group-hover:underline">browse files</span>
+                Drag and drop records here, or <span className="text-blue-700 group-hover:underline">browse files</span>
               </p>
               <p className="mt-1 text-xs text-slate-400">
                 Accepts verified PDF, DOCX, XLSX documents, or standard media archives
@@ -312,7 +318,7 @@ export default function UploadCommunication() {
                       className="flex items-center justify-between p-3.5 transition hover:bg-slate-50/60"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-700">
                           <FileText className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
@@ -341,7 +347,7 @@ export default function UploadCommunication() {
           {/* Toast/Notification Alerts */}
           {message && (
             <div
-              className={`flex items-start gap-3 rounded-lg border p-4 text-sm shadow-sm ${
+              className={`flex items-start gap-3 rounded-xl border p-4 text-sm shadow-sm xl:col-span-2 ${
                 message.type === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "border-rose-200 bg-rose-50 text-rose-800"
@@ -357,11 +363,11 @@ export default function UploadCommunication() {
           )}
 
           {/* Execution Footers */}
-          <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end border-t border-slate-200/80 pt-6">
+          <footer className="flex flex-col-reverse gap-3 border-t border-slate-200/80 pt-6 sm:flex-row sm:justify-end xl:col-span-2">
             <button
               type="button"
               onClick={resetForm}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-100"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               Reset Entry Form
@@ -370,7 +376,7 @@ export default function UploadCommunication() {
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-indigo-100 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
               {submitting ? (
                 <>

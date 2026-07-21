@@ -42,7 +42,7 @@ let dashboardCache = null;
 let dashboardLoaded = false;
 
 const cardStyle =
-  "group relative rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-4 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-500 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1";
+  "group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_6px_24px_rgba(15,23,42,.05)] transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_14px_34px_rgba(15,23,42,.09)] sm:p-5";
 
 function safe(value) {
   return value === null || value === undefined ? "" : String(value).trim();
@@ -136,41 +136,41 @@ function ModernStatCard({
   active,
 }) {
   return (
-    <div
+    <button type="button"
   onClick={onClick}
-  className={`${cardStyle} cursor-pointer ${
+  className={`${cardStyle} w-full cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
     active
-      ? "ring-2 ring-indigo-500 bg-indigo-50/70"
-      : "hover:ring-2 hover:ring-indigo-300"
+      ? "border-blue-300 bg-blue-50/70 ring-2 ring-blue-600"
+      : ""
   }`}
 >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ${color}`}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-100 ${color}`}
           >
             <Icon className="h-5 w-5" />
           </div>
-          <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-            <Activity className="h-3 w-3" /> Live
+          <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
           </span>
         </div>
 
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{value}</h2>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{value}</h2>
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
             {label}
           </p>
         </div>
 
-        <div className="border-t border-slate-50 pt-4">
+        <div className="border-t border-slate-100 pt-3">
           <p className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
             <span className={`h-1.5 w-1.5 rounded-full ${color?.replace("text", "bg")}`} />
             {hint}
           </p>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -912,7 +912,7 @@ const toggleSelectAll = () => {
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
 
   return (
-    <div className="relative z-10 mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-12">
+    <div className="relative z-10 min-h-screen bg-[#f5f7fb]">
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md transition-all duration-300">
           <div className="w-full max-w-md scale-100 overflow-hidden rounded-[2rem] border border-white/60 bg-white/90 p-8 shadow-2xl transition-all duration-300">
@@ -1109,20 +1109,23 @@ const toggleSelectAll = () => {
 )}
 
 
-      <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+      <section className="relative overflow-hidden bg-[#071d49] px-4 py-8 text-white sm:px-6 lg:px-8 lg:py-10">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+      <div className="relative mx-auto flex max-w-[1600px] flex-col gap-7 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-600/5 px-4 py-1.5 text-[11px] font-black uppercase tracking-wider text-indigo-600">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200">
             <span className="relative flex h-2 w-2">
-              <span className="absolute h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-600" />
+              <span className="absolute h-full w-full animate-ping rounded-full bg-sky-300 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-300" />
             </span>
             Google Email Live
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900">
-            Communication <span className="font-bold italic text-slate-400">Hub</span>
+          <h1 className="text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl lg:text-[2.75rem]">
+            Communication <span className="text-sky-300">Hub</span>
           </h1>
 
-          <p className="mt-2 text-sm font-medium text-slate-400">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100/65">
             A centralized platform for efficient communication tracking, monitoring, and document management.
           </p>
         </div>
@@ -1130,13 +1133,15 @@ const toggleSelectAll = () => {
         <button
           onClick={() => {
             fetchData(true);}}
-          className="flex w-full sm:w-auto justify-center items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-sky-300 sm:w-auto"
         >
           <RefreshCw className={`h-4 w-4 ${loading || isRefreshing ? "animate-spin" : ""}`} />
           Refresh Data
         </button>
       </div>
-          <div className="mb-8 grid gap-3 sm:gap-5 grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      </section>
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mb-8 grid grid-cols-1 gap-3 min-[460px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             <ModernStatCard
               icon={Calendar}
               label="Today"
@@ -1262,17 +1267,19 @@ const toggleSelectAll = () => {
           />
         </div>
 
-      <div className="mb-12 grid gap-6 lg:grid-cols-3">
-        <div className="min-w-0 rounded-[2rem] border border-white bg-white/60 p-4 sm:p-8 shadow-sm backdrop-blur-md lg:col-span-2">
-          <div className="mb-8 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-lg font-bold">
-              <Clock className="h-5 w-5 text-indigo-500" /> Volume Per Month
-            </h3>
-
+      <div className="mb-8 grid gap-5 xl:grid-cols-3">
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_6px_24px_rgba(15,23,42,.05)] sm:p-6 xl:col-span-2">
+          <div className="mb-7 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">Activity trend</p>
+              <h3 className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-950">
+                <Clock className="h-5 w-5 text-blue-600" /> Volume per month
+              </h3>
+            </div>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 outline-none"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             >
               {availableYears.map((y) => (
                 <option key={y} value={y}>
@@ -1287,8 +1294,8 @@ const toggleSelectAll = () => {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="8 8" vertical={false} stroke="#e2e8f0" />
@@ -1314,7 +1321,7 @@ const toggleSelectAll = () => {
                 <Area
                   type="natural"
                   dataKey="count"
-                  stroke="#6366f1"
+                  stroke="#2563eb"
                   strokeWidth={3}
                   fill="url(#areaGrad)"
                 />
@@ -1323,9 +1330,10 @@ const toggleSelectAll = () => {
           </div>
         </div>
 
-        <div className="min-w-0 rounded-[2.5rem] border border-white bg-white/60 p-8 shadow-sm backdrop-blur-md">
-          <h3 className="mb-8 flex items-center gap-2 text-lg font-bold">
-            <LayoutGrid className="h-5 w-5 text-slate-400" /> Status Distribution
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_6px_24px_rgba(15,23,42,.05)] sm:p-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">Record health</p>
+          <h3 className="mb-7 mt-1 flex items-center gap-2 text-lg font-bold text-slate-950">
+            <LayoutGrid className="h-5 w-5 text-blue-600" /> Status distribution
           </h3>
 
           <div className="h-[280px] w-full min-w-0">
@@ -1335,7 +1343,7 @@ const toggleSelectAll = () => {
                 <Tooltip cursor={{ fill: "transparent" }} />
                 <Bar dataKey="value" radius={[10, 10, 10, 10]} barSize={40}>
                   {statusData.map((_, i) => (
-                    <Cell key={i} fill={i % 2 === 0 ? "#6366f1" : "#cbd5e1"} />
+                    <Cell key={i} fill={i % 2 === 0 ? "#2563eb" : "#7dd3fc"} />
                   ))}
                 </Bar>
               </BarChart>
@@ -1344,14 +1352,15 @@ const toggleSelectAll = () => {
         </div>
       </div>
 
-      <div className="flex flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/40">
-        <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white p-4 sm:p-8">
+      <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,23,42,.06)]">
+        <div className="border-b border-slate-200 bg-white p-4 sm:p-6">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
             <div className="shrink-0 min-w-[220px]">
-              <h2 className="text-xl font-black tracking-tight text-slate-900">Data Explorer</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">Communications registry</p>
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">Data explorer</h2>
               <div className="mt-2 flex items-center gap-2 whitespace-nowrap">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />
-                <p className="text-sm font-bold text-slate-400">
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                <p className="text-xs font-semibold text-slate-500">
                   {filteredRows.length} entries analyzed
                 </p>
               </div>
@@ -1363,13 +1372,13 @@ const toggleSelectAll = () => {
                 <input
                   type="text"
                   placeholder="Search anything..."
-                  className="w-full sm:w-72 rounded-2xl border border-slate-200 bg-white/50 py-3 pl-11 pr-4 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100 sm:w-72"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
 
-              <div className="flex w-full sm:w-auto items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm overflow-x-auto">
+              <div className="flex w-full items-center gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 sm:w-auto">
                 <Calendar className="h-4 w-4 text-indigo-500" />
 
                 <input
@@ -1403,7 +1412,7 @@ const toggleSelectAll = () => {
               </div>
 
               <select
-                className="cursor-pointer rounded-2xl border border-slate-200 bg-slate-900 px-6 py-3 text-sm font-bold text-white outline-none shadow-lg hover:bg-slate-800"
+                className="cursor-pointer rounded-xl border border-blue-700 bg-blue-700 px-5 py-3 text-sm font-semibold text-white outline-none shadow-sm transition hover:bg-blue-800 focus:ring-2 focus:ring-blue-200"
                 value={remarkFilter}
                 onChange={(e) => setRemarkFilter(e.target.value)}
               >
@@ -1418,7 +1427,7 @@ const toggleSelectAll = () => {
           </div>
         </div>
                 {selectedRows.length > 0 && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 bg-indigo-50 px-4 sm:px-6 py-4">
+            <div className="flex flex-col gap-3 border-b border-blue-100 bg-blue-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <div className="text-sm font-bold text-slate-700">
                 {selectedRows.length} record{selectedRows.length > 1 ? "s" : ""} selected
               </div>
@@ -1456,10 +1465,10 @@ const toggleSelectAll = () => {
               </div>
             </div>
           )}
-        <div ref={tableContainerRef} className="max-h-[75vh] overflow-y-auto overflow-x-hidden">
-          <table className="w-full table-fixed border-separate border-spacing-0">
+        <div ref={tableContainerRef} className="max-h-[75vh] overflow-auto">
+          <table className="w-full min-w-[1080px] table-fixed border-separate border-spacing-0">
           <thead className="sticky top-0 z-20">
-          <tr className="bg-white/95 backdrop-blur-md">
+          <tr className="bg-slate-50/95 backdrop-blur-md">
 
           <th className="w-[4%] border-b border-slate-100 py-4 text-center">
             <input
@@ -1525,7 +1534,7 @@ const toggleSelectAll = () => {
                   return (
                     <tr
  key={row.refNumber || idx}
- className="group h-[82px] transition-all duration-200 hover:bg-slate-50/50"
+ className="group h-[82px] transition-all duration-200 hover:bg-blue-50/40"
 >
                       <td className="px-4 py-6 text-center">
                         <input
@@ -1536,7 +1545,7 @@ const toggleSelectAll = () => {
                         />
                       </td>
                       <td className="relative px-3 py-4 align-top">
-                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100" />
+                        <div className="absolute bottom-0 left-0 top-0 w-1 bg-blue-600 opacity-0 group-hover:opacity-100" />
                         <span className="font-mono text-[10px] font-bold text-slate-400">
                           {row.refNumber || "---"}
                         </span>
@@ -1644,7 +1653,7 @@ const toggleSelectAll = () => {
           </table>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 bg-slate-50/80 p-4 sm:p-8">
+        <div className="flex flex-col gap-4 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex h-10 w-24 items-center justify-center rounded-xl border border-slate-200 bg-white font-black text-slate-900 shadow-sm">
             {page} <span className="mx-2 font-light text-slate-300">/</span> {totalPages}
           </div>
@@ -1673,12 +1682,13 @@ const toggleSelectAll = () => {
                   behavior: "smooth",
                 });
               }}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg disabled:opacity-20"
+              className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-700 text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-20"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

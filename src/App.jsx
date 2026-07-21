@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
@@ -14,6 +14,7 @@ export default function App() {
   );
 
   const [activeView, setActiveView] = useState("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
 
   // ================================
@@ -116,10 +117,12 @@ export default function App() {
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
       />
 
 
-      <main className="min-h-screen w-full flex-1 pl-20 transition-all duration-300 ease-in-out">
+      <main className={`min-h-screen w-full flex-1 pt-17 transition-[padding] duration-300 ease-in-out md:pt-0 ${sidebarCollapsed ? "md:pl-[88px]" : "md:pl-[280px]"}`}>
 
         {renderView()}
 

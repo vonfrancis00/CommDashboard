@@ -140,36 +140,44 @@ export default function Email({ setActiveView }) {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f7fb] px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
+    <main className="min-h-screen bg-[#f5f7fb]">
       <StatusModal modal={modal} onClose={() => setModal(emptyModal)} onSuccess={() => setActiveView("dashboard")} />
 
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <header className="relative overflow-hidden bg-[#071d49] px-4 py-8 text-white sm:px-6 lg:px-8 lg:py-10">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+        <div className="relative mx-auto flex max-w-[1600px] flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
-            <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-white shadow-lg shadow-blue-700/20">
-              <Mail size={21} />
+            <div className="mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-lg backdrop-blur-sm">
+              <Mail size={22} className="text-sky-300" />
             </div>
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Official communication</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-[-0.03em] text-slate-950 sm:text-4xl">Compose message</h1>
-              <p className="mt-2 text-sm text-slate-500">Prepare and send official correspondence securely.</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-300">Official communication</p>
+              <h1 className="mt-1 text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl">Compose message</h1>
+              <p className="mt-2 text-sm text-blue-100/65">Prepare and send official correspondence securely.</p>
             </div>
           </div>
 
-          <button type="button" onClick={() => setActiveView("dashboard")} className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:self-auto">
+          <button type="button" onClick={() => setActiveView("dashboard")} className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-xl border border-white/15 bg-white/10 px-4 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-sky-300 sm:self-auto">
             <ArrowLeft size={17} /> Back to dashboard
           </button>
-        </header>
+        </div>
+      </header>
 
-        <form onSubmit={handleSend} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 px-6 py-5 sm:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <form onSubmit={handleSend} className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_10px_35px_rgba(15,23,42,.06)]">
+            <div className="border-b border-slate-200 px-5 py-5 sm:px-7 sm:py-6">
+              <div className="mb-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-700">Message details</p>
+                <p className="mt-1 text-sm text-slate-500">Add recipients and a clear subject line.</p>
+              </div>
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
                   <label htmlFor="email-to" className="text-sm font-semibold text-slate-700">To <span className="text-red-500">*</span></label>
                   <div className="relative mt-2">
                     <UserRound className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input id="email-to" type="text" value={to} onChange={(event) => setTo(event.target.value)} placeholder="recipient@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                    <input id="email-to" type="text" value={to} onChange={(event) => setTo(event.target.value)} placeholder="recipient@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100" />
                   </div>
                   <p className="mt-1.5 text-xs text-slate-400">Separate multiple addresses with commas.</p>
                 </div>
@@ -178,7 +186,7 @@ export default function Email({ setActiveView }) {
                   <label htmlFor="email-cc" className="text-sm font-semibold text-slate-700">Cc <span className="font-normal text-slate-400">(optional)</span></label>
                   <div className="relative mt-2">
                     <Mail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input id="email-cc" type="text" value={cc} onChange={(event) => setCc(event.target.value)} placeholder="copy@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                    <input id="email-cc" type="text" value={cc} onChange={(event) => setCc(event.target.value)} placeholder="copy@agency.gov.ph" autoComplete="off" className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100" />
                   </div>
                   <p className="mt-1.5 text-xs text-slate-400">Recipients receive a visible copy.</p>
                 </div>
@@ -186,18 +194,18 @@ export default function Email({ setActiveView }) {
 
               <div className="mt-5">
                 <label htmlFor="email-subject" className="text-sm font-semibold text-slate-700">Subject <span className="text-red-500">*</span></label>
-                <input id="email-subject" type="text" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Enter a clear and concise subject" className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+                <input id="email-subject" type="text" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Enter a clear and concise subject" className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100" />
               </div>
             </div>
 
-            <div className="px-6 py-6 sm:px-8">
+            <div className="px-5 py-6 sm:px-7">
               <div className="mb-2 flex items-center justify-between">
                 <label htmlFor="email-message" className="text-sm font-semibold text-slate-700">Message <span className="text-red-500">*</span></label>
                 <span className="text-xs tabular-nums text-slate-400">{message.length.toLocaleString()} characters</span>
               </div>
-              <textarea id="email-message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Write your message here..." rows={13} className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100" />
+              <textarea id="email-message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Write your message here..." rows={13} className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100" />
 
-              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4">
+              <div className="mt-5 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Paperclip size={18} /></div>
@@ -229,7 +237,7 @@ export default function Email({ setActiveView }) {
               </div>
             </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
               <button type="button" onClick={handleDiscard} disabled={!hasDraft || sending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 size={17} /> Discard draft</button>
               <button type="submit" disabled={sending} className="inline-flex h-11 min-w-40 items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 text-sm font-semibold text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-65">
                 {sending ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Sending...</> : <><Send size={17} /> Send message</>}
@@ -238,18 +246,18 @@ export default function Email({ setActiveView }) {
           </section>
 
           <aside className="space-y-4 xl:sticky xl:top-8">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="overflow-hidden rounded-2xl bg-[#0b2554] p-5 text-white shadow-[0_10px_30px_rgba(7,29,73,.15)]">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck size={18} /></div>
-                <div><p className="text-sm font-semibold text-slate-800">Secure delivery</p><p className="text-xs text-slate-400">Authorized system</p></div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300"><ShieldCheck size={19} /></div>
+                <div><p className="text-sm font-semibold text-white">Secure delivery</p><p className="text-xs text-blue-200/55">Authorized system</p></div>
               </div>
-              <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
+              <div className="mt-5 space-y-3 border-t border-white/10 pt-4 text-xs leading-5 text-blue-100/65">
                 <p>Review recipient addresses and attachments carefully before sending.</p>
                 <p>Messages sent through this portal may be retained for official records.</p>
               </div>
             </div>
 
-            <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-blue-800">
+            <div className="flex gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900">
               <Info size={17} className="mt-0.5 shrink-0" />
               <p>Required fields are marked with an asterisk. Your message is sent as formatted plain text.</p>
             </div>

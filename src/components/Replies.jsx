@@ -242,25 +242,27 @@ export default function Replies() {
   }, [data, search]);
 
   return (
-    <div className="flex-1 min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen flex-1 bg-[#f5f7fb]">
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200/60 bg-white/70 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-8 py-6">
+      <header className="relative w-full overflow-hidden bg-[#071d49] text-white">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+        <div className="relative mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-100">
-                <Inbox className="h-6 w-6 text-white" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-lg backdrop-blur-sm">
+                <Inbox className="h-6 w-6 text-sky-300" />
               </div>
 
               <div>
-                <h1 className="text-2xl font-black text-slate-900 leading-none">
+                <h1 className="text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl">
                   Replies & Forwards
                 </h1>
 
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
 
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-200/60">
                     {data.length} threads synced
                   </p>
                 </div>
@@ -269,20 +271,21 @@ export default function Replies() {
 
             <div className="flex items-center gap-3">
               <div className="relative group flex-1 md:flex-none">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-200/60 transition-colors group-focus-within:text-sky-300" />
 
                 <input
                   type="text"
                   placeholder="Filter by subject or sender..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 w-full md:w-72 rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-4 text-sm font-medium focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none"
+                  className="h-11 w-full rounded-xl border border-white/15 bg-white/10 pl-10 pr-4 text-sm font-medium text-white outline-none transition placeholder:text-blue-200/50 focus:border-sky-300 focus:bg-white/15 focus:ring-2 focus:ring-sky-300/20 md:w-80"
                 />
               </div>
 
               <button
                 onClick={fetchReplies}
-                className="p-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-indigo-600 transition-all active:scale-95 shadow-sm"
+                aria-label="Refresh replies"
+                className="rounded-xl border border-white/15 bg-white/10 p-3 text-blue-100 transition hover:bg-white/15 hover:text-white active:scale-95"
               >
                 <RefreshCw
                   className={`h-5 w-5 ${
@@ -295,13 +298,13 @@ export default function Replies() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-8 py-10">
+      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="h-24 w-full rounded-2xl bg-slate-100 animate-pulse"
+                className="h-28 w-full animate-pulse rounded-2xl border border-slate-200 bg-white"
               />
             ))}
           </div>
@@ -311,14 +314,14 @@ export default function Replies() {
             {error}
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-10">
             {Object.entries(processedData).map(([date, items]) => (
               <section key={date} className="relative">
-                <div className="sticky top-[108px] z-30 flex items-center gap-4 py-2 bg-[#F8FAFC]/90 backdrop-blur-sm mb-6">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 shadow-sm">
-                    <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+                <div className="sticky top-0 z-30 mb-4 flex items-center gap-4 bg-[#f5f7fb]/90 py-2 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-blue-600" />
 
-                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-950">
                       {date}
                     </span>
                   </div>
@@ -340,13 +343,13 @@ export default function Replies() {
                     return (
                       <div
                         key={idx}
-                        className="group bg-white border border-slate-200/70 rounded-2xl p-4 flex items-center gap-5 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-200 hover:-translate-y-0.5"
+                        className="group flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_5px_20px_rgba(15,23,42,.04)] transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_30px_rgba(15,23,42,.08)] sm:p-5 lg:flex-row lg:items-center"
                       >
                         <div
                           className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center shadow-sm ${
                             isFwd
                               ? "bg-amber-50 text-amber-600"
-                              : "bg-indigo-50 text-indigo-600"
+                              : "bg-blue-50 text-blue-700"
                           }`}
                         >
                           {isFwd ? (
@@ -362,7 +365,7 @@ export default function Replies() {
                               className={`text-[10px] font-black uppercase tracking-widest ${
                                 isFwd
                                   ? "text-amber-600"
-                                  : "text-indigo-600"
+                                  : "text-blue-700"
                               }`}
                             >
                               {getType(item)}
@@ -382,11 +385,11 @@ export default function Replies() {
                             </div>
                           </div>
 
-                          <h2 className="text-[15px] font-bold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                          <h2 className="truncate text-[15px] font-bold text-slate-900 transition-colors group-hover:text-blue-700">
                             {getSubject(item)}
                           </h2>
 
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
                             <span className="text-sm font-bold text-slate-700">
                               {getSender(item)}
                             </span>
@@ -403,7 +406,7 @@ export default function Replies() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
+                        <div className="flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-4 lg:w-auto lg:flex-nowrap lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
 
                           <div className="relative">
                               <button
@@ -418,7 +421,7 @@ export default function Replies() {
                                 className={`h-10 px-4 flex items-center gap-2 rounded-xl font-bold text-xs transition-all shadow-sm disabled:cursor-not-allowed ${
                                   isAcknowledged
                                     ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white disabled:opacity-60"
+                                    : "bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white disabled:opacity-60"
                                 }`}
                               >
                                 {isAcknowledging ? (
@@ -450,7 +453,7 @@ export default function Replies() {
                                 "_blank"
                               )
                             }
-                            className="h-10 px-4 flex items-center gap-2 rounded-xl bg-slate-50 text-slate-600 font-bold text-xs hover:bg-indigo-600 hover:text-white transition-all group/btn shadow-sm"
+                            className="group/btn flex h-10 items-center gap-2 rounded-xl bg-slate-100 px-4 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-blue-700 hover:text-white"
                           >
                             View Thread
 
