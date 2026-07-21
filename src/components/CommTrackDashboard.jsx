@@ -48,6 +48,10 @@ function safe(value) {
   return value === null || value === undefined ? "" : String(value).trim();
 }
 
+function statusKey(value) {
+  return safe(value).toLowerCase();
+}
+
 function cleanName(value) {
   const text = safe(value);
   let cleaned = text.replace(/\s*<[^>]*>\s*/g, "");
@@ -172,7 +176,6 @@ function ModernStatCard({
 
 export default function CommTrackDashboard() {
   const [rows, setRows] = useState(dashboardCache || []);
-  const [fastStats, setFastStats] = useState(null);
   const [loading, setLoading] = useState(!dashboardLoaded);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -350,39 +353,6 @@ const openTimeline = async (refNumber) => {
   }
 
 };
-const fetchDashboardStats = async () => {
-
-  try {
-
-    const result =
-      await request(
-        "getDashboardData",
-        "GET"
-      );
-
-
-    if (
-      result?.success &&
-      result?.counts
-    ) {
-
-      setFastStats(
-        result.counts
-      );
-
-    }
-
-
-  } catch (err) {
-
-    console.warn(
-      "Dashboard refresh skipped:",
-      err.message
-    );
-
-  }
-
-};
   const fetchData = useCallback(
 async (silent=false)=>{
 
@@ -470,9 +440,13 @@ async (silent=false)=>{
       setSavingRemarks((prev) => ({ ...prev, [refNumber]: true }));
 
       setRows((prev) =>
-        prev.map((row) =>
+        {
+          const next = prev.map((row) =>
           row.refNumber === refNumber ? { ...row, remarks: newRemark } : row
-        )
+          );
+          dashboardCache = next;
+          return next;
+        }
       );
 
       try {
@@ -508,9 +482,13 @@ const result = await request(
         console.error("Update remark error:", err);
 
         setRows((prev) =>
-          prev.map((row) =>
+          {
+            const next = prev.map((row) =>
             row.refNumber === refNumber ? { ...row, remarks: previousRemark } : row
-          )
+            );
+            dashboardCache = next;
+            return next;
+          }
         );
 
         showPopupAlert("Error", "Could not save remarks. Please check your connection.");
@@ -577,9 +555,8 @@ const result = await request(
     }
 
     // update UI instantly
-    setRows(
-      (prev) =>
-        prev.map(
+    setRows((prev) => {
+        const next = prev.map(
           (row) =>
             selectedRows.includes(
               row.refNumber
@@ -591,8 +568,10 @@ const result = await request(
             }
             :
             row
-        )
-    );
+        );
+        dashboardCache = next;
+        return next;
+    });
     setSelectedRows([]);
     closeModal();
     showPopupSuccess(
@@ -757,8 +736,6 @@ const deleteMultipleRecords = () => {
 
   const loadDashboard = async () => {
 
-    await fetchDashboardStats();
-
     await fetchData(
       dashboardLoaded
     );
@@ -772,8 +749,6 @@ const deleteMultipleRecords = () => {
   const intervalId =
     setInterval(
       async () => {
-
-        await fetchDashboardStats();
 
         await fetchData(true);
 
@@ -848,7 +823,7 @@ const toggleSelectAll = () => {
 
       if (
         remarkFilter !== "All" &&
-        row.remarks !== remarkFilter
+        statusKey(row.remarks) !== statusKey(remarkFilter)
       )
         return false;
 
@@ -903,7 +878,7 @@ const toggleSelectAll = () => {
       statusMap.set(sKey, (statusMap.get(sKey) || 0) + 1);
     });
 
-    const getC = (v) => rows.filter((r) => r.remarks?.toLowerCase() === v.toLowerCase()).length;
+    const getC = (v) => rows.filter((r) => statusKey(r.remarks) === statusKey(v)).length;
 
     return {
       chartData: monthOrder.map((m) => ({ month: m, count: monthMap.get(m) || 0 })),
@@ -1154,7 +1129,6 @@ const toggleSelectAll = () => {
 
         <button
           onClick={() => {
-            fetchDashboardStats();
             fetchData(true);}}
           className="flex w-full sm:w-auto justify-center items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50"
         >
@@ -1166,7 +1140,7 @@ const toggleSelectAll = () => {
             <ModernStatCard
               icon={Calendar}
               label="Today"
-              value={fastStats?.today ?? stats.today}
+              value={stats.today}
               hint="Received Today"
               color="text-cyan-500"
               active={todayFilter}
@@ -1178,7 +1152,7 @@ const toggleSelectAll = () => {
             <ModernStatCard
             icon={AlertCircle}
             label="Pending"
-            value={fastStats?.pending ?? stats.pending}
+            value={stats.pending}
             hint="Awaiting Action"
             color="text-orange-500"
             active={remarkFilter === "Pending"}
@@ -1189,7 +1163,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={CheckCircle2}
             label="Acknowledge"
-            value={fastStats?.acknowledge ?? stats.acknowledge}
+            value={stats.acknowledge}
             hint="Acknowledged"
             color="text-indigo-500"
             active={remarkFilter === "Acknowledge"}
@@ -1202,7 +1176,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={Activity}
             label="For Action"
-            value={fastStats?.forAction ?? stats.forAction}
+            value={stats.forAction}
             hint="Requires Action"
             color="text-blue-500"
             active={remarkFilter === "For Action"}
@@ -1213,7 +1187,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={Mail}
             label="Invitations"
-            value={fastStats?.invitations ?? stats.invitations}
+            value={stats.invitations}
             hint="Event Invites"
             color="text-purple-500"
             active={remarkFilter === "Invitations"}
@@ -1226,7 +1200,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={Activity}
             label="Memorandums"
-            value={fastStats?.memorandums ?? stats.memorandums}
+            value={stats.memorandums}
             hint="Internal Memos"
             color="text-amber-500"
             active={remarkFilter === "Memorandums"}
@@ -1240,7 +1214,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={ThumbsUp}
             label="Approved"
-            value={fastStats?.approved ?? stats.approved}
+            value={stats.approved}
             hint="Approved Records"
             color="text-emerald-500"
             active={remarkFilter === "Approved"}
@@ -1252,7 +1226,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={CheckCircle2}
             label="Actioned"
-            value={fastStats?.actioned ?? stats.actioned}
+            value={stats.actioned}
             hint="Completed"
             color="text-green-700"
             active={remarkFilter === "Actioned"}
@@ -1264,7 +1238,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={Inbox}
             label="For Info"
-            value={fastStats?.forInfo ?? stats.forInfo}
+            value={stats.forInfo}
             hint="Information Only"
             color="text-slate-500"
             active={remarkFilter === "For Info"}
@@ -1276,7 +1250,7 @@ const toggleSelectAll = () => {
           <ModernStatCard
             icon={AlertCircle}
             label="Disapproved"
-            value={fastStats?.disapproved ?? stats.disapproved}
+            value={stats.disapproved}
             hint="Needs Revision"
             color="text-red-500"
             active={remarkFilter === "Disapproved"}

@@ -131,9 +131,14 @@ export default function Replies() {
       setAcknowledgeError((current) => ({ ...current, [key]: "" }));
 
       const result = await request("sendAcknowledgementEmail", "POST", {
-        to: recipient,
-        subject: getSubject(item),
-      });
+  to: recipient,
+  subject: getSubject(item),
+  threadId:
+    item?.["Thread ID"] ||
+    item?.ThreadId ||
+    item?.threadId ||
+    "",
+});
 
       if (!result?.success) {
         throw new Error(result?.error || result?.message || "Acknowledgement could not be sent.");
