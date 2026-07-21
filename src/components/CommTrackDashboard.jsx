@@ -274,14 +274,18 @@ const [loadingTimeline, setLoadingTimeline] = useState(null);
     setModalConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const openForwardModal = (refNumber) => {
+const openForwardModal = (refNumber) => {
   const row = rows.find(r => r.refNumber === refNumber);
+  const originalSubject = String(row?.subject || "").trim();
+  const forwardSubject = /^(fw|fwd)\s*:/i.test(originalSubject)
+    ? originalSubject
+    : `Fwd: ${originalSubject || "Communication"}`;
 
   setForwardModal({
     isOpen: true,
     refNumber,
     to: "",
-    subject: row?.subject || "",
+    subject: forwardSubject,
     includeOriginalCc: true,
     originalCc: "",
   });

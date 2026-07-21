@@ -20,8 +20,12 @@ export default function ForwardModal({
 
   const [sucs, setSucs] = useState([]);
   const [selectedSucs, setSelectedSucs] = useState([]);
-  const [search, setSearch] = useState("");
+  const [offices, setOffices] = useState([]);
+  const [selectedOffices, setSelectedOffices] = useState([]);
+  const [sucSearch, setSucSearch] = useState("");
+  const [officeSearch, setOfficeSearch] = useState("");
   const [loadingSucs, setLoadingSucs] = useState(false);
+  const [loadingOffices, setLoadingOffices] = useState(false);
 
 
   useEffect(() => {
@@ -44,16 +48,39 @@ export default function ForwardModal({
       }
     }
     loadSucs();
+
+    async function loadOffices() {
+      try {
+        setLoadingOffices(true);
+        const res = await request(
+          "getOffices",
+          "GET"
+        );
+        setOffices(res || []);
+      } catch (err) {
+        console.error(
+          "Failed loading offices:",
+          err
+        );
+      } finally {
+        setLoadingOffices(false);
+      }
+    }
+    loadOffices();
   }, [isOpen]);
   useEffect(() => {
   if (!isOpen) {
     setSelectedSucs([]);
-    setSearch("");
+    setSelectedOffices([]);
+    setSucSearch("");
+    setOfficeSearch("");
   }
 }, [isOpen]);
   const resetModal = () => {
   setSelectedSucs([]);
-  setSearch("");
+  setSelectedOffices([]);
+  setSucSearch("");
+  setOfficeSearch("");
 
   setData({
     isOpen: false,
@@ -69,21 +96,13 @@ const handleClose = () => {
   resetModal();
   onClose();
 };
-  function toggleSUC(email) {
-    let updated;
-    if (selectedSucs.includes(email)) {
-      updated =
-        selectedSucs.filter(
-          e => e !== email
-        );
-    } else {
-      updated = [
-        ...selectedSucs,
-        email
-      ];
-    }
-    setSelectedSucs(updated);
+  function updateRecipients(nextSucs, nextOffices) {
     setData(prev => {
+      const listedEmails = new Set(
+        [...sucs, ...offices]
+          .map(recipient => recipient.email)
+          .filter(Boolean)
+      );
       const manualEmails =
         (prev.to || "")
           .split(",")
@@ -91,28 +110,63 @@ const handleClose = () => {
           .filter(
             e =>
               e &&
-              !sucs.some(
-                s => s.email === e
-              )
+              !listedEmails.has(e)
           );
       return {
         ...prev,
         to: [
           ...manualEmails,
-          ...updated
+          ...nextSucs,
+          ...nextOffices
         ]
           .filter(Boolean)
+          .filter((email, index, emails) => emails.indexOf(email) === index)
           .join(", ")
       };
     });
   }
+
+  function toggleSUC(email) {
+    const updated = selectedSucs.includes(email)
+      ? selectedSucs.filter(e => e !== email)
+      : [...selectedSucs, email];
+
+    setSelectedSucs(updated);
+    updateRecipients(updated, selectedOffices);
+  }
+
+  function toggleOffice(email) {
+    const updated = selectedOffices.includes(email)
+      ? selectedOffices.filter(e => e !== email)
+      : [...selectedOffices, email];
+
+    setSelectedOffices(updated);
+    updateRecipients(selectedSucs, updated);
+  }
+
   const filteredSucs =
   sucs
     .filter(s =>
       s.name
         ?.toLowerCase()
         .includes(
-          search.toLowerCase()
+          sucSearch.toLowerCase()
+        )
+    )
+    .sort((a, b) =>
+      a.name.localeCompare(
+        b.name,
+        undefined,
+        { sensitivity: "base" }
+      )
+    );
+  const filteredOffices =
+  offices
+    .filter(office =>
+      office.name
+        ?.toLowerCase()
+        .includes(
+          officeSearch.toLowerCase()
         )
     )
     .sort((a, b) =>
@@ -188,9 +242,9 @@ const handleClose = () => {
                 size={16}
                 className="text-slate-400"
               />
-              <input value={search} 
+              <input value={sucSearch}
                 onChange={(e)=>
-                  setSearch(
+                  setSucSearch(
                     e.target.value
                   )
                 }
@@ -245,6 +299,80 @@ const handleClose = () => {
                   </div>
                   {selectedSucs.includes(
                     suc.email
+                  ) && (
+                    <CheckCircle2 size={18} className="text-indigo-600"/>
+                  )}
+                </label>
+              ))}
+            </div>
+          </section>
+          {/* OFFICES */}
+          <section>
+            <div className="flex items-center justify-between">
+              <Label>
+                Offices Recipients
+              </Label>
+              <span className="text-xs font-bold text-indigo-500">
+                {selectedOffices.length} selected
+              </span>
+            </div>
+            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
+              <Search
+                size={16}
+                className="text-slate-400"
+              />
+              <input value={officeSearch}
+                onChange={(e)=>
+                  setOfficeSearch(
+                    e.target.value
+                  )
+                }
+                placeholder="Search office..."
+                className="flex-1 bg-transparent py-2 text-sm outline-none"
+              />
+            </div>
+            <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
+              {!loadingOffices &&
+               filteredOffices.length === 0 && (
+                <p className="text-center text-sm text-slate-400">
+                  No offices found
+                </p>
+              )}
+              {filteredOffices.map((office,index)=>(
+                <label key={office.email || index} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition
+                    ${
+                      selectedOffices.includes(
+                        office.email
+                      )
+                      ?
+                      "border-indigo-400 bg-indigo-50"
+                      :
+                      "border-transparent bg-white hover:border-slate-200"
+                    }
+                  `}
+                >
+                  <input type="checkbox" checked={
+                      selectedOffices.includes(
+                        office.email
+                      )
+                    }
+                    onChange={() =>
+                      toggleOffice(
+                        office.email
+                      )
+                    }
+                  />
+                  <Users size={18} className="text-slate-400"/>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-700">
+                      {office.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {office.email}
+                    </p>
+                  </div>
+                  {selectedOffices.includes(
+                    office.email
                   ) && (
                     <CheckCircle2 size={18} className="text-indigo-600"/>
                   )}
