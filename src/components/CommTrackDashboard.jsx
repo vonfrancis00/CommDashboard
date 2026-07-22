@@ -119,6 +119,7 @@ function normalize(item = {}) {
 const getStatusStyles = (status) => {
   const s = status?.toLowerCase() || "";
   if (s === "pending") return "bg-orange-500/10 text-orange-600 border-orange-200/50";
+  if (s === "forwarded") return "bg-cyan-500/10 text-cyan-700 border-cyan-200/50";
   if (s === "actioned" || s === "approved")
     return "bg-emerald-500/10 text-emerald-600 border-emerald-200/50";
   if (s === "for action") return "bg-blue-500/10 text-blue-600 border-blue-200/50";
@@ -809,7 +810,15 @@ const toggleSelectAll = () => {
   }, [rows]);
 
   const remarkOptions = useMemo(() => {
-    const defaults = ["Pending", "For Action", "Invitations", "For Info", "Approved", "Actioned"];
+    const defaults = [
+      "Pending",
+      "For Action",
+      "Forwarded",
+      "Invitations",
+      "For Info",
+      "Approved",
+      "Actioned",
+    ];
     const fromRows = rows.map((r) => r.remarks).filter(Boolean);
     return ["", ...new Set([...defaults, ...fromRows])];
   }, [rows]);
