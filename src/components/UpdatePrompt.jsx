@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
-const CHECK_INTERVAL_MS = 60_000;
+const CHECK_INTERVAL_MS = 30_000;
 
 export default function UpdatePrompt() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -36,18 +36,22 @@ export default function UpdatePrompt() {
       if (document.visibilityState === "visible") checkForUpdate();
     };
     document.addEventListener("visibilitychange", checkWhenVisible);
+    window.addEventListener("focus", checkForUpdate);
+    window.addEventListener("online", checkForUpdate);
 
     return () => {
       window.clearTimeout(initialCheck);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", checkWhenVisible);
+      window.removeEventListener("focus", checkForUpdate);
+      window.removeEventListener("online", checkForUpdate);
     };
   }, [checkForUpdate]);
 
   if (!updateAvailable) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-indigo-200 bg-white p-4 shadow-2xl shadow-slate-900/20 sm:bottom-6 sm:right-6">
+    <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-indigo-200 bg-white p-4 shadow-2xl shadow-slate-900/20">
       <div className="flex gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
           <RefreshCw size={20} />
