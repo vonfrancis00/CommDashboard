@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from "react"
 import { useDebounce } from "use-debounce";
 import { request } from "../services/api";
 import ForwardModal from "../components/ForwardModal";
+import AssignPersonnelModal from "../components/AssignPersonnelModal";
 import TimelineDot from "../components/TimelineDot";
 import {
   Activity,
@@ -21,6 +22,7 @@ import {
   X,
   Send,
   Eye,
+  UserRoundPlus,
 } from "lucide-react";
 import {
   Area,
@@ -192,6 +194,7 @@ export default function CommTrackDashboard() {
   const [savingRemarks, setSavingRemarks] = useState({});
   const [deletingRows, setDeletingRows] = useState({});
   const [isForwarding, setIsForwarding] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   
   const [viewModal, setViewModal] = useState({
@@ -215,6 +218,7 @@ export default function CommTrackDashboard() {
     message: "",
     onConfirm: null,
   });
+  const [assignModal, setAssignModal] = useState({ isOpen: false, record: null });
 
   const [timelineModal, setTimelineModal] = useState({
   isOpen: false,
@@ -302,6 +306,34 @@ const openForwardModal = (refNumber) => {
     originalCc: "",
   });
 };
+
+  const assignPersonnel = async (person) => {
+    const record = assignModal.record;
+    if (!record || !person?.email) return;
+
+    setIsAssigning(true);
+    try {
+      const result = await request("forwardRecord", "POST", {
+        refNumber: record.refNumber,
+        to: person.email,
+        subject: `Assigned: ${record.subject || "Communication"}`,
+        includeOriginalCc: false,
+      });
+      if (!result.success) throw new Error(result.error || "Assignment email failed");
+
+      setAssignModal({ isOpen: false, record: null });
+      showPopupSuccess(
+        "Personnel Assigned",
+        `${person.name || person.email} was assigned to ${record.refNumber}. The email and original attachment(s) were sent.`
+      );
+    } catch (err) {
+      console.error("Assignment error:", err);
+      setAssignModal({ isOpen: false, record: null });
+      showPopupAlert("Assignment Failed", err.message || "Could not send the assignment email.");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
 const openTimeline = async (refNumber) => {
 
@@ -1023,6 +1055,13 @@ const toggleSelectAll = () => {
   onForward={forwardRecord}
   isForwarding={isForwarding}
 />
+<AssignPersonnelModal
+  isOpen={assignModal.isOpen}
+  record={assignModal.record}
+  assigning={isAssigning}
+  onClose={() => !isAssigning && setAssignModal({ isOpen: false, record: null })}
+  onAssign={assignPersonnel}
+/>
 <TimelineDot
   isOpen={timelineModal.isOpen}
   refNumber={timelineModal.refNumber}
@@ -1479,7 +1518,7 @@ const toggleSelectAll = () => {
             </div>
           )}
         <div ref={tableContainerRef} className="max-h-[75vh] overflow-auto">
-          <table className="w-full min-w-[1080px] table-fixed border-separate border-spacing-0">
+          <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-0">
           <thead className="sticky top-0 z-20">
           <tr className="bg-slate-50/95 backdrop-blur-md">
 
@@ -1497,19 +1536,15 @@ const toggleSelectAll = () => {
             />
           </th>
 
-          <th className="w-[11%] border-b border-slate-100 px-2 py-4 text-left text-[10px] font-black uppercase text-slate-400">
-          Reference
-          </th>
-
-          <th className="w-[13%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          <th className="w-[17%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
           Recipient
           </th>
 
-          <th className="w-[9%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          <th className="w-[10%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
           Timestamp
           </th>
 
-          <th className="w-[35%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          <th className="w-[39%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
           Subject
           </th>
 
@@ -1517,7 +1552,7 @@ const toggleSelectAll = () => {
           Status
           </th>
 
-          <th className="w-[14%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
+          <th className="w-[16%] border-b border-slate-100 px-2 py-4 text-center text-[10px] font-black uppercase text-slate-400">
           Actions
           </th>
 
@@ -1528,7 +1563,7 @@ const toggleSelectAll = () => {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="py-32 text-center font-black italic text-slate-200 animate-pulse"
                   >
                     Synchronizing...
@@ -1557,15 +1592,17 @@ const toggleSelectAll = () => {
                           className="h-4 w-4"
                         />
                       </td>
-                      <td className="relative px-3 py-4 align-top">
+                      <td className="relative px-3 py-4 align-top text-center">
                         <div className="absolute bottom-0 left-0 top-0 w-1 bg-blue-600 opacity-0 group-hover:opacity-100" />
-                        <span className="font-mono text-[10px] font-bold text-slate-400">
-                          {row.refNumber || "---"}
-                        </span>
-                      </td>
-
-                      <td className="px-3 py-4 align-top text-center font-bold text-slate-900">
-                        {row.receivedFrom || "---"}
+                        <p
+                          className={`cursor-pointer break-words font-bold leading-snug text-slate-900 ${
+                            isExpanded ? "" : "line-clamp-2"
+                          }`}
+                          onClick={() => toggleRow(row.refNumber)}
+                          title={isExpanded ? "Click to collapse" : "Click to show full recipient"}
+                        >
+                          {row.receivedFrom || "---"}
+                        </p>
                       </td>
 
                       <td className="px-3 py-4 align-top">
@@ -1616,11 +1653,13 @@ const toggleSelectAll = () => {
                         </div>
                       </td>
 
-                      <td className="px-3 py-4 align-top text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-2 py-4 align-top text-center">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openTimeline(row.refNumber)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 hover:bg-emerald-100"
+                            title="View timeline"
+                            aria-label="View timeline"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                           >
                             {loadingTimeline === row.refNumber ? (
                               <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1637,22 +1676,38 @@ const toggleSelectAll = () => {
                               })
                             }
                             disabled={!row.fileLink}
-                            className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black uppercase tracking-wider text-blue-600 transition hover:bg-blue-100 disabled:opacity-40"
+                            title="View document"
+                            aria-label="View document"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => openForwardModal(row.refNumber)}
                             disabled={isDeleting || isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black uppercase tracking-wider text-indigo-600 transition hover:bg-indigo-100 disabled:opacity-50"
+                            title="Forward communication"
+                            aria-label="Forward communication"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-600 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Send className="h-4 w-4" />
                           </button>
 
                           <button
+                            onClick={() => setAssignModal({ isOpen: true, record: row })}
+                            disabled={isDeleting || isSaving}
+                            title="Assign personnel"
+                            aria-label="Assign personnel"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-violet-50 text-violet-600 transition-colors hover:bg-violet-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <UserRoundPlus className="h-4 w-4" />
+                          </button>
+
+                          <button
                             onClick={() => deleteRecord(row.refNumber)}
                             disabled={isDeleting || isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-wider text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                            title="Delete record"
+                            aria-label="Delete record"
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
