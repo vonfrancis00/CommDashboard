@@ -2,11 +2,49 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Search, UserRound, UserRoundCheck, X } from "lucide-react";
 import { request } from "../services/api";
 
+const PERSONNEL_CACHE_MS = 5 * 60 * 1000;
+let personnelCache = [];
+let personnelCacheTime = 0;
+let personnelRequest = null;
+
 function valueFrom(record, names) {
   const entry = Object.entries(record || {}).find(([key]) =>
     names.includes(String(key).trim().toLowerCase())
   );
   return entry ? String(entry[1] || "").trim() : "";
+}
+
+function normalizePersonnel(rows) {
+  const seen = new Set();
+
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      name: valueFrom(row, ["name", "full name", "personnel name"]),
+      email: valueFrom(row, ["email", "email address", "username"]),
+    }))
+    .filter(({ email }) => {
+      const key = email.toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+}
+
+async function fetchPersonnel() {
+  if (personnelRequest) return personnelRequest;
+
+  personnelRequest = request("", "GET", { sheet: "Accounts" })
+    .then((rows) => {
+      personnelCache = normalizePersonnel(rows);
+      personnelCacheTime = Date.now();
+      return personnelCache;
+    })
+    .finally(() => {
+      personnelRequest = null;
+    });
+
+  return personnelRequest;
 }
 
 export default function AssignPersonnelModal({ isOpen, record, onClose, onAssign, assigning }) {
@@ -17,6 +55,13 @@ export default function AssignPersonnelModal({ isOpen, record, onClose, onAssign
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Warm the list while the dashboard is idle so opening the modal is immediate.
+    fetchPersonnel().catch((err) => {
+      console.error("Failed preloading Accounts sheet:", err);
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) return;
 
     let active = true;
@@ -24,21 +69,14 @@ export default function AssignPersonnelModal({ isOpen, record, onClose, onAssign
       setSelectedEmail("");
       setSearch("");
       setError("");
-      setLoading(true);
+      const hasCachedPersonnel = personnelCache.length > 0;
+      if (hasCachedPersonnel) setPersonnel(personnelCache);
+      setLoading(!hasCachedPersonnel);
 
       try {
-        const rows = await request("", "GET", { sheet: "Accounts" });
+        const cacheIsFresh = Date.now() - personnelCacheTime < PERSONNEL_CACHE_MS;
+        const accounts = cacheIsFresh ? personnelCache : await fetchPersonnel();
         if (!active) return;
-        const accounts = (Array.isArray(rows) ? rows : [])
-          .map((row) => ({
-            name: valueFrom(row, ["name", "full name", "personnel name"]),
-            email: valueFrom(row, ["email", "email address", "username"]),
-          }))
-          .filter((account) => account.email)
-          .filter((account, index, all) =>
-            all.findIndex((item) => item.email.toLowerCase() === account.email.toLowerCase()) === index
-          )
-          .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
         setPersonnel(accounts);
       } catch (err) {
         console.error("Failed loading Accounts sheet:", err);

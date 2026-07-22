@@ -313,11 +313,10 @@ const openForwardModal = (refNumber) => {
 
     setIsAssigning(true);
     try {
-      const result = await request("forwardRecord", "POST", {
+      const result = await request("assignPersonnel", "POST", {
         refNumber: record.refNumber,
-        to: person.email,
-        subject: `Assigned: ${record.subject || "Communication"}`,
-        includeOriginalCc: false,
+        personnelEmail: person.email,
+        personnelName: person.name,
       });
       if (!result.success) throw new Error(result.error || "Assignment email failed");
 
