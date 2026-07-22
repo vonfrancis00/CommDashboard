@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Component, useState, useEffect } from "react";
 
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
@@ -6,6 +6,30 @@ import CommTrackDashboard from "./components/CommTrackDashboard";
 import Email from "./components/Email";
 import Replies from "./components/Replies";
 import UploadCommunication from "./components/UploadCommunication";
+import Report from "./components/Report";
+
+class ReportErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-slate-50 p-6 sm:p-10">
+          <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
+            <h1 className="text-xl font-bold text-slate-950">Reports could not be displayed</h1>
+            <p className="mt-2 text-sm text-slate-500">Refresh the page and try again. If the problem continues, the report data may be unavailable.</p>
+            <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700">{this.state.error?.message}</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
 
@@ -95,6 +119,10 @@ export default function App() {
 
       case "replies":
         return <Replies setActiveView={setActiveView} />;
+
+      case "reports":
+      case "report":
+        return <ReportErrorBoundary><Report /></ReportErrorBoundary>;
 
       default:
         return <CommTrackDashboard />;

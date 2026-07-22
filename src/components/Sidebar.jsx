@@ -6,6 +6,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  FileBarChart,
   ReplyAll,
   Send,
   Upload,
@@ -14,6 +15,7 @@ import {
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", description: "Overview & activity", icon: LayoutDashboard },
+  { id: "reports", label: "Reports", description: "Insights & exports", icon: FileBarChart },
   { id: "replies", label: "Replies & forwards", description: "Track responses", icon: ReplyAll },
   { id: "create", label: "Create email", description: "Compose a message", icon: Send },
   { id: "upload", label: "Upload record", description: "Add communication", icon: Upload },
@@ -84,6 +86,7 @@ export default function Sidebar({ activeView, setActiveView, collapsed, setColla
             const Icon = item.icon;
             return (
               <button
+                type="button"
                 key={item.id}
                 onClick={() => selectView(item.id)}
                 title={collapsed && !isMobile ? item.label : undefined}
