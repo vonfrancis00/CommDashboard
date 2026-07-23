@@ -1,7 +1,6 @@
 const SPREADSHEET_ID = "1LwZjTv-sEWG_QlmQTXey-xF-HmfPgML0hOgYxRdseVg";
 const SHEET_NAME = "Sheet1";
 const CACHE_SECONDS = 900;
-const SESSION_SECRET_PROPERTY = "COMMTRACK_SESSION_SECRET";
 const PASSWORD_PEPPER_PROPERTY = "COMMTRACK_PASSWORD_PEPPER";
 const SESSION_MAX_SECONDS = 12 * 60 * 60;
 const MAX_POST_BYTES = 8 * 1024 * 1024;
@@ -72,19 +71,6 @@ function getOrCreateSecret(propertyName) {
   return secret;
 }
 
-function base64UrlEncode(value) {
-  return Utilities.base64EncodeWebSafe(
-    value,
-    Utilities.Charset.UTF_8
-  ).replace(/=+$/, "");
-}
-
-function base64UrlDecode(value) {
-  return Utilities.newBlob(
-    Utilities.base64DecodeWebSafe(value)
-  ).getDataAsString(Utilities.Charset.UTF_8);
-}
-
 function constantTimeEqual(left, right) {
   const first = String(left || "");
   const second = String(right || "");
@@ -130,42 +116,70 @@ function createSessionToken(user) {
     midnight.getTime(),
     now + SESSION_MAX_SECONDS * 1000
   );
-  const payload = base64UrlEncode(JSON.stringify({
+  const token =
+    Utilities.getUuid().replace(/-/g, "") +
+    Utilities.getUuid().replace(/-/g, "");
+  const session = {
     email: String(user.email || "").toLowerCase(),
     name: String(user.name || ""),
     exp: expiresAt,
     nonce: Utilities.getUuid()
-  }));
-  const signature = Utilities.base64EncodeWebSafe(
-    Utilities.computeHmacSha256Signature(
-      payload,
-      getOrCreateSecret(SESSION_SECRET_PROPERTY)
-    )
-  ).replace(/=+$/, "");
-  return payload + "." + signature;
+  };
+  const properties = PropertiesService.getScriptProperties();
+  cleanupExpiredSessions(properties, now);
+  properties.setProperty(
+    getSessionPropertyKey(token),
+    JSON.stringify(session)
+  );
+  return token;
 }
 
 function verifySessionToken(token) {
   try {
-    const parts = String(token || "").split(".");
-    if (parts.length !== 2) return null;
-    const expected = Utilities.base64EncodeWebSafe(
-      Utilities.computeHmacSha256Signature(
-        parts[0],
-        getOrCreateSecret(SESSION_SECRET_PROPERTY)
-      )
-    ).replace(/=+$/, "");
-    if (!constantTimeEqual(parts[1], expected)) return null;
-    const session = JSON.parse(base64UrlDecode(parts[0]));
+    const normalizedToken = String(token || "").trim();
+    if (!/^[a-f0-9]{64}$/i.test(normalizedToken)) return null;
+    const properties = PropertiesService.getScriptProperties();
+    const propertyKey = getSessionPropertyKey(normalizedToken);
+    const storedSession = properties.getProperty(propertyKey);
+    if (!storedSession) return null;
+    const session = JSON.parse(storedSession);
     if (
       !session.email ||
       !session.exp ||
       Number(session.exp) <= Date.now()
-    ) return null;
+    ) {
+      properties.deleteProperty(propertyKey);
+      return null;
+    }
     return session;
   } catch (error) {
     return null;
   }
+}
+
+function getSessionPropertyKey(token) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(token || ""),
+    Utilities.Charset.UTF_8
+  );
+  return "COMMTRACK_SESSION_" +
+    Utilities.base64EncodeWebSafe(digest).replace(/=+$/, "");
+}
+
+function cleanupExpiredSessions(properties, now) {
+  const allProperties = properties.getProperties();
+  Object.keys(allProperties).forEach(key => {
+    if (key.indexOf("COMMTRACK_SESSION_") !== 0) return;
+    try {
+      const session = JSON.parse(allProperties[key]);
+      if (!session.exp || Number(session.exp) <= now) {
+        properties.deleteProperty(key);
+      }
+    } catch (error) {
+      properties.deleteProperty(key);
+    }
+  });
 }
 
 function requireSession(e, body) {
@@ -3097,6 +3111,41 @@ function clearCommTrackCache() {
   invalidateDataCaches(SHEET_NAME);
   invalidateDataCaches("Notifications");
 }
+
+/**
+ * Run this function once from the Apps Script editor after deploying.
+ * It converts every remaining plaintext Credentials password to the protected
+ * v1 format without changing the password users enter at sign-in.
+ */
+function migrateAllCredentialPasswords() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    const sheet = getSheet("Credentials");
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { success: true, migrated: 0 };
+    }
+
+    const range = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1);
+    const values = range.getDisplayValues();
+    let migrated = 0;
+
+    values.forEach(row => {
+      const password = String(row[0] || "");
+      if (password && password.indexOf("v1$") !== 0) {
+        row[0] = createPasswordRecord(password);
+        migrated++;
+      }
+    });
+
+    if (migrated) range.setValues(values);
+    return { success: true, migrated: migrated };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function login(body) {
   const email = String(body.username || "").trim().toLowerCase();
   const password = String(body.password || "");

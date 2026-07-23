@@ -60,6 +60,11 @@ export default function Login({ onLogin }) {
         return;
       }
 
+      if (!result.authToken) {
+        setError("The backend deployment is out of date. Deploy the latest Code.gs version and try again.");
+        return;
+      }
+
       localStorage.setItem(
         "user",
         JSON.stringify({ ...result, loginDate: new Date().toDateString() }),
