@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  BarChart3,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -10,6 +9,10 @@ import {
   Inbox,
   Printer,
   RefreshCw,
+  Search,
+  TrendingUp,
+  Users,
+  X,
 } from "lucide-react";
 import {
   Bar,
@@ -62,6 +65,9 @@ export default function Report() {
   const [error, setError] = useState("");
   const [year, setYear] = useState("All");
   const [status, setStatus] = useState("All");
+  const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const load = async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
@@ -94,10 +100,18 @@ export default function Report() {
 
   const years = useMemo(() => [...new Set(rows.map((row) => row.date?.getFullYear()).filter(Boolean))].sort((a, b) => b - a), [rows]);
   const statuses = useMemo(() => [...new Set(rows.map((row) => row.status).filter(Boolean))].sort(), [rows]);
-  const filtered = useMemo(() => rows.filter((row) =>
-    (year === "All" || row.date?.getFullYear() === Number(year)) &&
-    (status === "All" || row.status === status)
-  ), [rows, year, status]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+    const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
+    return rows.filter((row) =>
+      (year === "All" || row.date?.getFullYear() === Number(year)) &&
+      (status === "All" || row.status === status) &&
+      (!start || (row.date && row.date >= start)) &&
+      (!end || (row.date && row.date <= end)) &&
+      (!query || [row.reference, row.sender, row.subject, row.status].some((value) => value.toLowerCase().includes(query)))
+    );
+  }, [rows, year, status, search, startDate, endDate]);
 
   const report = useMemo(() => {
     const monthly = MONTHS.map((month) => ({ month, records: 0 }));
@@ -108,13 +122,32 @@ export default function Report() {
     });
     const resolved = filtered.filter((row) => ["approved", "actioned"].includes(row.status.toLowerCase())).length;
     const pending = filtered.filter((row) => ["pending", "for action"].includes(row.status.toLowerCase())).length;
+    const senderCounts = new Map();
+    filtered.forEach((row) => {
+      const sender = row.sender.trim() || "Unknown sender";
+      senderCounts.set(sender, (senderCounts.get(sender) || 0) + 1);
+    });
     return {
       monthly,
       statuses: [...statusCounts].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       resolved,
       pending,
+      completionRate: filtered.length ? Math.round((resolved / filtered.length) * 100) : 0,
+      topSenders: [...senderCounts].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6),
     };
   }, [filtered]);
+
+  const recentRecords = useMemo(
+    () => [...filtered].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)).slice(0, 10),
+    [filtered],
+  );
+
+  const hasExtraFilters = Boolean(search || startDate || endDate);
+  const clearExtraFilters = () => {
+    setSearch("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   const printPages = useMemo(() => {
     const rowsPerPage = 16;
@@ -140,7 +173,7 @@ export default function Report() {
     { label: "Total records", value: filtered.length, hint: "In the selected report", icon: Inbox, tone: "bg-blue-50 text-blue-700" },
     { label: "Resolved", value: report.resolved, hint: "Approved or actioned", icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700" },
     { label: "Needs attention", value: report.pending, hint: "Pending or for action", icon: Clock3, tone: "bg-amber-50 text-amber-700" },
-    { label: "Status groups", value: report.statuses.length, hint: "Distinct classifications", icon: BarChart3, tone: "bg-violet-50 text-violet-700" },
+    { label: "Completion rate", value: `${report.completionRate}%`, hint: `${report.statuses.length} status classifications`, icon: TrendingUp, tone: "bg-violet-50 text-violet-700" },
   ];
 
   return (
@@ -172,6 +205,21 @@ export default function Report() {
           <div className="mt-8 flex min-h-96 items-center justify-center rounded-3xl border border-slate-200 bg-white"><RefreshCw className="animate-spin text-blue-700" size={28} /></div>
         ) : (
           <>
+            <section className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_28px_rgba(15,23,42,.05)]">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <input aria-label="Search report records" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search reference, sender, subject, or status" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100" />
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">From <input aria-label="Start date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-slate-700 outline-none" /></label>
+                  <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">To <input aria-label="End date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-slate-700 outline-none" /></label>
+                  {hasExtraFilters && <button onClick={clearExtraFilters} className="inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"><X size={15} /> Clear</button>}
+                </div>
+              </div>
+              <p className="mt-3 text-xs font-semibold text-slate-400">Showing {filtered.length.toLocaleString()} of {rows.length.toLocaleString()} records</p>
+            </section>
+
             <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {cards.map(({ label, value, hint, icon: Icon, tone }) => <div key={label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)]"><div className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}><Icon size={21} /></div><p className="mt-5 text-3xl font-bold tracking-tight text-slate-950">{value.toLocaleString()}</p><p className="mt-1 text-sm font-bold text-slate-700">{label}</p><p className="mt-1 text-xs text-slate-400">{hint}</p></div>)}
             </div>
@@ -184,6 +232,31 @@ export default function Report() {
               <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-6">
                 <h2 className="font-bold text-slate-950">Status distribution</h2><p className="mt-1 text-xs text-slate-400">Breakdown of the selected records</p>
                 {report.statuses.length ? <><div className="h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={report.statuses} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86} paddingAngle={3}>{report.statuses.map((entry, index) => <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />)}</Pie><Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0" }} /></PieChart></ResponsiveContainer></div><div className="space-y-2.5">{report.statuses.slice(0, 6).map((item, index) => <div key={item.name} className="flex items-center text-xs"><span className="mr-2 h-2.5 w-2.5 rounded-full" style={{ background: COLORS[index % COLORS.length] }} /><span className="min-w-0 flex-1 truncate font-semibold text-slate-600">{item.name}</span><span className="font-bold text-slate-950">{item.value}</span></div>)}</div></> : <div className="flex h-72 items-center justify-center text-sm text-slate-400">No records match these filters.</div>}
+              </section>
+            </div>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1.6fr]">
+              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,.05)] sm:p-6">
+                <div className="flex items-center gap-3"><div className="rounded-xl bg-cyan-50 p-2.5 text-cyan-700"><Users size={20} /></div><div><h2 className="font-bold text-slate-950">Top senders</h2><p className="text-xs text-slate-400">Highest communication volume</p></div></div>
+                <div className="mt-6 space-y-4">
+                  {report.topSenders.length ? report.topSenders.map((item, index) => {
+                    const maximum = report.topSenders[0]?.value || 1;
+                    return <div key={item.name}><div className="mb-1.5 flex items-center gap-3 text-xs"><span className="w-5 font-bold text-slate-400">{index + 1}</span><span className="min-w-0 flex-1 truncate font-semibold text-slate-700" title={item.name}>{item.name}</span><span className="font-bold text-slate-950">{item.value}</span></div><div className="ml-8 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-cyan-600" style={{ width: `${Math.max(8, (item.value / maximum) * 100)}%` }} /></div></div>;
+                  }) : <p className="py-16 text-center text-sm text-slate-400">No sender data available.</p>}
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_28px_rgba(15,23,42,.05)]">
+                <div className="flex items-end justify-between border-b border-slate-100 p-5 sm:p-6"><div><h2 className="font-bold text-slate-950">Latest matching records</h2><p className="mt-1 text-xs text-slate-400">The 10 most recent results from the active filters</p></div><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{filtered.length} total</span></div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left">
+                    <thead><tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400"><th className="px-5 py-3">Reference</th><th className="px-5 py-3">Date</th><th className="px-5 py-3">Sender / Subject</th><th className="px-5 py-3">Status</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {recentRecords.map((row, index) => <tr key={`${row.reference}-${index}`} className="text-xs transition hover:bg-blue-50/40"><td className="whitespace-nowrap px-5 py-3.5 font-bold text-slate-800">{row.reference || "—"}</td><td className="whitespace-nowrap px-5 py-3.5 text-slate-500">{row.date ? new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", year: "numeric" }).format(row.date) : "—"}</td><td className="max-w-sm px-5 py-3.5"><p className="truncate font-bold text-slate-700">{row.sender || "Unknown sender"}</p><p className="mt-0.5 truncate text-slate-400" title={row.subject}>{row.subject || "No subject"}</p></td><td className="px-5 py-3.5"><span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600">{row.status}</span></td></tr>)}
+                      {!recentRecords.length && <tr><td colSpan={4} className="px-5 py-16 text-center text-sm text-slate-400">No records match the active filters.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
               </section>
             </div>
           </>
