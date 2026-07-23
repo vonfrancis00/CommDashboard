@@ -26,7 +26,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { request } from "../services/api";
+import { getRecords } from "../services/api";
 
 const COLORS = ["#2563eb", "#0d9488", "#f59e0b", "#7c3aed", "#e11d48", "#64748b"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -36,7 +36,7 @@ const valueOf = (row, ...keys) => keys.map((key) => row?.[key]).find((value) => 
 function normalize(row) {
   const rawDate = valueOf(row, "Date Received", "dateReceived");
   const date = rawDate ? new Date(rawDate) : null;
-  return {
+  const normalized = {
     reference: String(valueOf(row, "Ref number", "RefNumber", "refNumber")),
     sender: String(valueOf(row, "Received From", "receivedFrom")),
     subject: String(valueOf(row, "Subject", "subject")),
@@ -44,6 +44,12 @@ function normalize(row) {
     rawDate,
     date: date && !Number.isNaN(date.getTime()) ? date : null,
   };
+  normalized.year = normalized.date?.getFullYear();
+  normalized.month = normalized.date?.getMonth();
+  normalized.timestamp = normalized.date?.getTime() || 0;
+  normalized.statusLower = normalized.status.toLowerCase();
+  normalized.searchText = `${normalized.reference}\n${normalized.sender}\n${normalized.subject}\n${normalized.status}`.toLowerCase();
+  return normalized;
 }
 
 const csvCell = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -68,12 +74,13 @@ export default function Report() {
   const [search, setSearch] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [preparingPrint, setPreparingPrint] = useState(false);
 
   const load = async (quiet = false) => {
     quiet ? setRefreshing(true) : setLoading(true);
     setError("");
     try {
-      const result = await request("getRecords", "GET");
+      const result = await getRecords({ force: quiet });
       setRows((Array.isArray(result) ? result : []).map(normalize));
     } catch (err) {
       setError(err?.message || "Unable to load report data.");
@@ -85,7 +92,7 @@ export default function Report() {
 
   useEffect(() => {
     let ignore = false;
-    request("getRecords", "GET")
+    getRecords()
       .then((result) => {
         if (!ignore) setRows((Array.isArray(result) ? result : []).map(normalize));
       })
@@ -98,32 +105,32 @@ export default function Report() {
     return () => { ignore = true; };
   }, []);
 
-  const years = useMemo(() => [...new Set(rows.map((row) => row.date?.getFullYear()).filter(Boolean))].sort((a, b) => b - a), [rows]);
+  const years = useMemo(() => [...new Set(rows.map((row) => row.year).filter(Boolean))].sort((a, b) => b - a), [rows]);
   const statuses = useMemo(() => [...new Set(rows.map((row) => row.status).filter(Boolean))].sort(), [rows]);
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
     const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
     return rows.filter((row) =>
-      (year === "All" || row.date?.getFullYear() === Number(year)) &&
+      (year === "All" || row.year === Number(year)) &&
       (status === "All" || row.status === status) &&
       (!start || (row.date && row.date >= start)) &&
       (!end || (row.date && row.date <= end)) &&
-      (!query || [row.reference, row.sender, row.subject, row.status].some((value) => value.toLowerCase().includes(query)))
+      (!query || row.searchText.includes(query))
     );
   }, [rows, year, status, search, startDate, endDate]);
 
   const report = useMemo(() => {
     const monthly = MONTHS.map((month) => ({ month, records: 0 }));
     const statusCounts = new Map();
-    filtered.forEach((row) => {
-      if (row.date) monthly[row.date.getMonth()].records += 1;
-      statusCounts.set(row.status, (statusCounts.get(row.status) || 0) + 1);
-    });
-    const resolved = filtered.filter((row) => ["approved", "actioned"].includes(row.status.toLowerCase())).length;
-    const pending = filtered.filter((row) => ["pending", "for action"].includes(row.status.toLowerCase())).length;
     const senderCounts = new Map();
+    let resolved = 0;
+    let pending = 0;
     filtered.forEach((row) => {
+      if (row.date) monthly[row.month].records += 1;
+      statusCounts.set(row.status, (statusCounts.get(row.status) || 0) + 1);
+      if (row.statusLower === "approved" || row.statusLower === "actioned") resolved += 1;
+      if (row.statusLower === "pending" || row.statusLower === "for action") pending += 1;
       const sender = row.sender.trim() || "Unknown sender";
       senderCounts.set(sender, (senderCounts.get(sender) || 0) + 1);
     });
@@ -138,7 +145,7 @@ export default function Report() {
   }, [filtered]);
 
   const recentRecords = useMemo(
-    () => [...filtered].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0)).slice(0, 10),
+    () => [...filtered].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10),
     [filtered],
   );
 
@@ -150,12 +157,30 @@ export default function Report() {
   };
 
   const printPages = useMemo(() => {
+    if (!preparingPrint) return [];
     const rowsPerPage = 16;
     return Array.from(
       { length: Math.max(1, Math.ceil(filtered.length / rowsPerPage)) },
       (_, index) => filtered.slice(index * rowsPerPage, (index + 1) * rowsPerPage),
     );
-  }, [filtered]);
+  }, [filtered, preparingPrint]);
+
+  useEffect(() => {
+    if (!preparingPrint) return undefined;
+
+    let secondFrame;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => window.print());
+    });
+    const finishPrinting = () => setPreparingPrint(false);
+    window.addEventListener("afterprint", finishPrinting, { once: true });
+
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+      window.removeEventListener("afterprint", finishPrinting);
+    };
+  }, [preparingPrint]);
 
   const exportCsv = () => {
     const header = ["Reference", "Date Received", "Received From", "Subject", "Status"];
@@ -196,7 +221,7 @@ export default function Report() {
               <option value="All">All statuses</option>{statuses.map((item) => <option key={item}>{item}</option>)}
             </select>
             <button onClick={() => load(true)} disabled={refreshing} className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-blue-100 shadow-sm backdrop-blur-sm transition hover:bg-white/15 hover:text-white disabled:opacity-50" aria-label="Refresh report"><RefreshCw size={19} className={refreshing ? "animate-spin" : ""} /></button>
-            <button onClick={() => window.print()} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 disabled:opacity-50"><Printer size={17} /> Print</button>
+            <button onClick={() => setPreparingPrint(true)} disabled={!filtered.length || preparingPrint} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 disabled:opacity-50">{preparingPrint ? <RefreshCw size={17} className="animate-spin" /> : <Printer size={17} />} Print</button>
             <button onClick={exportCsv} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-bold text-[#071d49] shadow-sm transition hover:bg-sky-300 disabled:opacity-50"><Download size={17} /> Export CSV</button>
           </div>
         </div>
@@ -268,7 +293,7 @@ export default function Report() {
         )}
       </div>
     </div>
-    <section className="report-print-sheet" aria-hidden="true">
+    {preparingPrint && <section className="report-print-sheet" aria-hidden="true">
       {printPages.map((pageRows, pageIndex) => (
         <article className="report-print-page" key={pageIndex}>
           <div className="report-print-header">
@@ -306,7 +331,7 @@ export default function Report() {
           </footer>
         </article>
       ))}
-    </section>
+    </section>}
     </>
   );
 }

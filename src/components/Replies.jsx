@@ -292,7 +292,7 @@ export default function Replies() {
               </div>
 
               <div>
-                <h1 className="text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl">
+                <h1 className="text-2xl font-extrabold leading-none tracking-[-0.025em] text-white sm:text-3xl">
                   Replies & Forwards
                 </h1>
 

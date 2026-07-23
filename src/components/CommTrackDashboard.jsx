@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useDebounce } from "use-debounce";
 import { request } from "../services/api";
@@ -192,7 +192,6 @@ export default function CommTrackDashboard() {
   const [selectedYear, setSelectedYear] = useState("All");
   const [todayFilter, setTodayFilter] = useState(false);
   const [expandedRows, setExpandedRows] = useState(new Set());
-  const [refresh, setRefresh] = useState(0);
   const [page, setPage] = useState(1);
   const [savingRemarks, setSavingRemarks] = useState({});
   const [deletingRows, setDeletingRows] = useState({});
@@ -386,7 +385,7 @@ const openTimeline = async (refNumber) => {
     setTimelineModal({
   isOpen: true,
   refNumber,
-  data: result || [],
+  data: [],
   dateReceived: selectedRow?.dateReceived || "",
 });
 
@@ -545,7 +544,7 @@ const result = await request(
         setSavingRemarks((prev) => ({ ...prev, [refNumber]: false }));
       }
     },
-    [fetchData]
+    []
   );
   
   const updateMultipleRemarks = async (newRemark) => {
@@ -675,7 +674,7 @@ const result = await request(
         setDeletingRows((prev) => ({ ...prev, [refNumber]: false }));
       }
     },
-    [fetchData]
+    []
   );
 
   const deleteRecord = useCallback(
@@ -824,7 +823,9 @@ const deleteMultipleRecords = () => {
 
 }, [fetchData]);
 
+  /* Resetting pagination is an intentional response to a filter change. */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search, startDate, endDate, remarkFilter, selectedYear, todayFilter,]);
 
@@ -922,6 +923,9 @@ const toggleSelectAll = () => {
       .sort((a, b) => (b.parsedDate?.getTime() || 0) - (a.parsedDate?.getTime() || 0));
   }, [rows, search, startDate, endDate, remarkFilter, todayFilter,]);
 
+  // The compiler cannot currently preserve this pagination memo across the
+  // separately memoized filter result, but the explicit memo is still valid.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * ROWS_PER_PAGE;
     return filteredRows.slice(start, start + ROWS_PER_PAGE);

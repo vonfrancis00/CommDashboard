@@ -35,7 +35,7 @@ export default function QuickForwardModal({ isOpen, forwarding, onClose, onForwa
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    request("", "GET", { sheet: "Accounts" })
+    request("getAccounts", "GET")
       .then((rows) => { if (active) setAccounts(normalizeAccounts(rows)); })
       .catch(() => { if (active) setError("Unable to load recipients from the Accounts sheet."); })
       .finally(() => { if (active) setLoading(false); });

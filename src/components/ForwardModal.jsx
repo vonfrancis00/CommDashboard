@@ -71,16 +71,6 @@ export default function ForwardModal({
     }
     loadOffices();
   }, [isOpen]);
-  useEffect(() => {
-  if (!isOpen) {
-    setSelectedSucs([]);
-    setSelectedOffices([]);
-    setSucSearch("");
-    setOfficeSearch("");
-    setShowSucs(false);
-    setShowOffices(false);
-  }
-}, [isOpen]);
   const resetModal = () => {
   setSelectedSucs([]);
   setSelectedOffices([]);

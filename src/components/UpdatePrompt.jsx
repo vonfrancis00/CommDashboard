@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
-const CHECK_INTERVAL_MS = 30_000;
+const CHECK_INTERVAL_MS = 5 * 60_000;
 
 export default function UpdatePrompt() {
   const [updateAvailable, setUpdateAvailable] = useState(false);

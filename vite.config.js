@@ -32,4 +32,9 @@ export default defineConfig({
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
   },
 
+  build: {
+    target: "es2020",
+    sourcemap: false,
+  },
+
 });

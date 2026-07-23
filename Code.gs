@@ -1,6 +1,24 @@
 const SPREADSHEET_ID = "1LwZjTv-sEWG_QlmQTXey-xF-HmfPgML0hOgYxRdseVg";
 const SHEET_NAME = "Sheet1";
 const CACHE_SECONDS = 900;
+const SESSION_SECRET_PROPERTY = "COMMTRACK_SESSION_SECRET";
+const PASSWORD_PEPPER_PROPERTY = "COMMTRACK_PASSWORD_PEPPER";
+const SESSION_MAX_SECONDS = 12 * 60 * 60;
+const MAX_POST_BYTES = 8 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 6 * 1024 * 1024;
+const ALLOWED_REMARKS = [
+  "",
+  "pending",
+  "for action",
+  "forwarded",
+  "invitations",
+  "for info",
+  "approved",
+  "actioned",
+  "disapproved",
+  "acknowledge",
+  "memorandums"
+];
 
 // ==============================
 // FAST SPREADSHEET CACHE
@@ -42,6 +60,185 @@ function getSheet(sheetName) {
       sheetName || SHEET_NAME
     );
 
+}
+
+function getOrCreateSecret(propertyName) {
+  const properties = PropertiesService.getScriptProperties();
+  let secret = properties.getProperty(propertyName);
+  if (!secret) {
+    secret = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid();
+    properties.setProperty(propertyName, secret);
+  }
+  return secret;
+}
+
+function base64UrlEncode(value) {
+  return Utilities.base64EncodeWebSafe(
+    value,
+    Utilities.Charset.UTF_8
+  ).replace(/=+$/, "");
+}
+
+function base64UrlDecode(value) {
+  return Utilities.newBlob(
+    Utilities.base64DecodeWebSafe(value)
+  ).getDataAsString(Utilities.Charset.UTF_8);
+}
+
+function constantTimeEqual(left, right) {
+  const first = String(left || "");
+  const second = String(right || "");
+  let difference = first.length ^ second.length;
+  const length = Math.max(first.length, second.length);
+  for (let index = 0; index < length; index++) {
+    difference |= (first.charCodeAt(index) || 0) ^
+      (second.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
+
+function hashPassword(password, salt) {
+  const pepper = getOrCreateSecret(PASSWORD_PEPPER_PROPERTY);
+  return Utilities.base64EncodeWebSafe(
+    Utilities.computeHmacSha256Signature(
+      String(password || ""),
+      String(salt || "") + pepper
+    )
+  ).replace(/=+$/, "");
+}
+
+function createPasswordRecord(password) {
+  const salt = Utilities.getUuid().replace(/-/g, "");
+  return "v1$" + salt + "$" + hashPassword(password, salt);
+}
+
+function verifyPassword(password, storedValue) {
+  const stored = String(storedValue || "");
+  if (stored.indexOf("v1$") !== 0) {
+    return constantTimeEqual(password, stored);
+  }
+  const parts = stored.split("$");
+  return parts.length === 3 &&
+    constantTimeEqual(hashPassword(password, parts[1]), parts[2]);
+}
+
+function createSessionToken(user) {
+  const now = Date.now();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const expiresAt = Math.min(
+    midnight.getTime(),
+    now + SESSION_MAX_SECONDS * 1000
+  );
+  const payload = base64UrlEncode(JSON.stringify({
+    email: String(user.email || "").toLowerCase(),
+    name: String(user.name || ""),
+    exp: expiresAt,
+    nonce: Utilities.getUuid()
+  }));
+  const signature = Utilities.base64EncodeWebSafe(
+    Utilities.computeHmacSha256Signature(
+      payload,
+      getOrCreateSecret(SESSION_SECRET_PROPERTY)
+    )
+  ).replace(/=+$/, "");
+  return payload + "." + signature;
+}
+
+function verifySessionToken(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length !== 2) return null;
+    const expected = Utilities.base64EncodeWebSafe(
+      Utilities.computeHmacSha256Signature(
+        parts[0],
+        getOrCreateSecret(SESSION_SECRET_PROPERTY)
+      )
+    ).replace(/=+$/, "");
+    if (!constantTimeEqual(parts[1], expected)) return null;
+    const session = JSON.parse(base64UrlDecode(parts[0]));
+    if (
+      !session.email ||
+      !session.exp ||
+      Number(session.exp) <= Date.now()
+    ) return null;
+    return session;
+  } catch (error) {
+    return null;
+  }
+}
+
+function requireSession(e, body) {
+  const token = body && body.authToken
+    ? body.authToken
+    : e && e.parameter
+      ? e.parameter.authToken
+      : "";
+  const session = verifySessionToken(token);
+  if (!session) {
+    throw new Error("AUTH_REQUIRED");
+  }
+  return session;
+}
+
+function authErrorResponse() {
+  return jsonResponse({
+    success: false,
+    code: "AUTH_REQUIRED",
+    error: "Your session is invalid or has expired."
+  });
+}
+
+function enforceRateLimit(key, maximum, seconds) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "rate_" + String(key).replace(/[^a-zA-Z0-9_.@-]/g, "_");
+  const current = Number(cache.get(cacheKey) || 0);
+  if (current >= maximum) {
+    throw new Error("RATE_LIMITED");
+  }
+  cache.put(cacheKey, String(current + 1), seconds);
+}
+
+function validateEmailList(value, fieldName) {
+  const emails = String(value || "")
+    .split(/[,\n;]/)
+    .map(email => email.trim())
+    .filter(Boolean);
+  if (emails.length > 50) {
+    throw new Error((fieldName || "Recipients") + " exceeds 50 addresses.");
+  }
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  emails.forEach(email => {
+    if (!validEmail.test(email) || email.length > 254) {
+      throw new Error("Invalid email address in " + (fieldName || "recipients") + ".");
+    }
+  });
+  return emails;
+}
+
+function getMutationSheetName(requestedSheet) {
+  const sheetName = String(requestedSheet || SHEET_NAME).trim();
+  if (sheetName !== SHEET_NAME) {
+    throw new Error("INVALID_SHEET");
+  }
+  return sheetName;
+}
+
+function validateRemark(remark) {
+  const normalized = String(remark || "").trim().toLowerCase();
+  if (ALLOWED_REMARKS.indexOf(normalized) === -1) {
+    throw new Error("INVALID_REMARK");
+  }
+}
+
+function withMutationLock(callback) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function invalidateDataCaches(sheetName) {
@@ -312,6 +509,9 @@ function doGet(e) {
       e.parameter.action
         ? e.parameter.action
         : "";
+
+      requireSession(e, null);
+
         // FAST DASHBOARD
       if (action === "getDashboardData") {
 
@@ -335,6 +535,10 @@ if (action === "getNotifications") {
 if (action === "getOffices") {
   return jsonResponse(getOffices());
 }
+
+    if (action === "getAccounts") {
+      return jsonResponse(getAccounts());
+    }
 
     // GET SUC LIST FOR FORWARD MODAL
     if (action === "getSucs") {
@@ -365,65 +569,16 @@ if (action === "getTimeline") {
 
 }
 
-
-    const sheetName =
-  (e && e.parameter && e.parameter.sheet)
-    ? e.parameter.sheet
-    : SHEET_NAME;
-
-const cacheKey =
-  "commtrack_data_" + sheetName;
-    const cache = CacheService.getScriptCache();
-    const cached = cache.get(cacheKey);
-
-    if (cached) {
-      return ContentService
-        .createTextOutput(cached)
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    const sheet = getSheet(sheetName);
-
-    if (!sheet) {
-      return ContentService
-        .createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    const lastRow = sheet.getLastRow();
-    const lastColumn = sheet.getLastColumn();
-
-    if (lastRow < 2 || lastColumn < 1) {
-      return ContentService
-        .createTextOutput("[]")
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    const data = sheet.getRange(1, 1, lastRow, lastColumn).getValues();
-    const headers = data[0];
-    const rows = data.slice(1);
-
-    const result = rows
-      .filter(row => row.some(cell => cell !== "" && cell !== null))
-      .map(row => {
-        const obj = {};
-        headers.forEach((header, i) => {
-          obj[header] = row[i];
-        });
-        return obj;
-      });
-
-    const json = JSON.stringify(result);
-
-    if (json.length < 90000) {
-      cache.put(cacheKey, json, CACHE_SECONDS);
-    }
-
-    return ContentService
-      .createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({
+      success: false,
+      code: "UNKNOWN_ACTION",
+      error: "Unknown or unsupported GET action."
+    });
 
   } catch (error) {
+    if (String(error && error.message || error) === "AUTH_REQUIRED") {
+      return authErrorResponse();
+    }
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
@@ -435,11 +590,38 @@ const cacheKey =
 
 function doPost(e) {
   try {
+    if (
+      !e ||
+      !e.postData ||
+      Number(e.postData.length || 0) > MAX_POST_BYTES
+    ) {
+      return jsonResponse({
+        success: false,
+        code: "REQUEST_TOO_LARGE",
+        error: "The request is missing or too large."
+      });
+    }
     const body = JSON.parse(e.postData.contents || "{}");
-    Logger.log(body);
     if (body.action === "login") {
   return login(body);
 }
+
+    const session = requireSession(e, body);
+    body.updatedBy = session.name || session.email;
+
+    if ([
+      "forwardRecord",
+      "forwardReply",
+      "sendAcknowledgementEmail",
+      "assignPersonnel",
+      "sendEmail"
+    ].indexOf(body.action) !== -1) {
+      enforceRateLimit(
+        "email_" + session.email,
+        20,
+        60
+      );
+    }
 
     if (body.action === "updateRemark") {
   return updateRemark(body);
@@ -507,6 +689,14 @@ if (body.action === "getTimeline") {
     );
 }
 
+    if (body.action !== "sendEmail") {
+      return jsonResponse({
+        success: false,
+        code: "UNKNOWN_ACTION",
+        error: "Unknown or unsupported POST action."
+      });
+    }
+
     const to = body.to;
     const cc = body.cc || "";
     const subject = body.subject || "";
@@ -520,6 +710,25 @@ if (body.action === "getTimeline") {
           error: "Missing to, subject, or message"
         }))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    validateEmailList(to, "To");
+    validateEmailList(cc, "Cc");
+    if (
+      subject.length > 998 ||
+      message.length > 500000 ||
+      !Array.isArray(attachments) ||
+      attachments.length > 10
+    ) {
+      throw new Error("Email content exceeds the allowed limits.");
+    }
+
+    const totalAttachmentBytes = attachments.reduce(
+      (total, file) => total + Math.ceil(String(file.data || "").length * 0.75),
+      0
+    );
+    if (totalAttachmentBytes > MAX_ATTACHMENT_BYTES) {
+      throw new Error("Attachments exceed the 6 MB request limit.");
     }
 
     const blobs = attachments.map(file => {
@@ -541,6 +750,17 @@ if (body.action === "getTimeline") {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
+    const errorMessage = String(error && error.message || error);
+    if (errorMessage === "AUTH_REQUIRED") {
+      return authErrorResponse();
+    }
+    if (errorMessage === "RATE_LIMITED") {
+      return jsonResponse({
+        success: false,
+        code: "RATE_LIMITED",
+        error: "Too many requests. Please wait before trying again."
+      });
+    }
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
@@ -551,6 +771,12 @@ if (body.action === "getTimeline") {
 }
 
 function updateRemark(body) {
+  return withMutationLock(function() {
+    return updateRemarkUnlocked(body);
+  });
+}
+
+function updateRemarkUnlocked(body) {
   try {
 
     const refNumber =
@@ -558,6 +784,7 @@ function updateRemark(body) {
 
     const remarks =
       String(body.remarks || "").trim();
+    validateRemark(remarks);
 
     const oldRemarks =
       String(body.oldRemarks || "").trim();
@@ -566,7 +793,7 @@ function updateRemark(body) {
       String(body.updatedBy || "Unknown User").trim();
 
     const sheetName =
-      body.sheet || SHEET_NAME;
+      getMutationSheetName(body.sheet);
 
 
     if (!refNumber) {
@@ -1339,11 +1566,18 @@ Logger.log(
 
 }
 function updateMultipleRemarks(body) {
+  return withMutationLock(function() {
+    return updateMultipleRemarksUnlocked(body);
+  });
+}
+
+function updateMultipleRemarksUnlocked(body) {
 
   try {
     const updates = body.updates || [];
     const remarks = String(body.remarks || "").trim();
-    const sheetName = body.sheet ||  SHEET_NAME;
+    validateRemark(remarks);
+    const sheetName = getMutationSheetName(body.sheet);
 
     if ( !Array.isArray(updates) || updates.length === 0) {
       return jsonResponse({
@@ -1577,9 +1811,15 @@ function trashDriveFilesFromRow(rowValues, headers) {
 }
 
 function deleteRecord(body) {
+  return withMutationLock(function() {
+    return deleteRecordUnlocked(body);
+  });
+}
+
+function deleteRecordUnlocked(body) {
   try {
     const refNumber = String(body.refNumber || "").trim();
-    const sheetName = body.sheet || SHEET_NAME;
+    const sheetName = getMutationSheetName(body.sheet);
 
     if (!refNumber) {
       return ContentService
@@ -1688,9 +1928,15 @@ function deleteRecord(body) {
   }
 }
 function deleteMultipleRecords(body) {
+  return withMutationLock(function() {
+    return deleteMultipleRecordsUnlocked(body);
+  });
+}
+
+function deleteMultipleRecordsUnlocked(body) {
   try {
     const refNumbers = body.refNumbers || [];
-    const sheetName = body.sheet || SHEET_NAME;
+    const sheetName = getMutationSheetName(body.sheet);
 
     if (!Array.isArray(refNumbers) || !refNumbers.length) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -1842,6 +2088,7 @@ function forwardReply(body) {
         error: "Missing forward recipient."
       });
     }
+    validateEmailList(recipient, "Recipient");
 
     const thread = GmailApp.getThreadById(threadId);
     if (!thread) {
@@ -1874,12 +2121,20 @@ function forwardReply(body) {
 }
 
 function forwardRecord(body) {
+  return withMutationLock(function() {
+    return forwardRecordUnlocked(body);
+  });
+}
+
+function forwardRecordUnlocked(body) {
   try {
     const refNumber = String(body.refNumber || "").trim();
     const forwardTo = String(body.to || body.forwardTo || "").trim();
     const forwardCc = String(body.cc || body.forwardCc || "").trim();
     const customSubject = String(body.subject || "").trim();
-    const sheetName = body.sheet || SHEET_NAME;
+    const sheetName = getMutationSheetName(body.sheet);
+    validateEmailList(forwardTo, "To");
+    validateEmailList(forwardCc, "Cc");
 
     if (!refNumber) {
       return ContentService
@@ -2499,6 +2754,7 @@ function sendAcknowledgementEmail(recipient, originalSubject,threadId) {
   if (!to) {
     throw new Error("Missing recipient email address");
   }
+  validateEmailList(to, "Recipient");
 
   const cleanSubject = String(
     originalSubject || "Communication"
@@ -2842,6 +3098,31 @@ function clearCommTrackCache() {
   invalidateDataCaches("Notifications");
 }
 function login(body) {
+  const email = String(body.username || "").trim().toLowerCase();
+  const password = String(body.password || "");
+
+  if (
+    !email ||
+    !password ||
+    email.length > 254 ||
+    password.length > 256
+  ) {
+    return jsonResponse({
+      success: false,
+      message: "Invalid email or password."
+    });
+  }
+
+  try {
+    enforceRateLimit("login_" + email, 10, 15 * 60);
+  } catch (error) {
+    return jsonResponse({
+      success: false,
+      code: "RATE_LIMITED",
+      message: "Too many sign-in attempts. Please try again later."
+    });
+  }
+
   const sheet = getSheet("Credentials");
 
   if (!sheet) {
@@ -2853,9 +3134,6 @@ function login(body) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  const email = String(body.username || "").trim().toLowerCase();
-  const password = String(body.password || "").trim();
-
   const data = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
@@ -2864,14 +3142,24 @@ function login(body) {
     const dbPassword = String(data[i][1]).trim();
     const dbName = String(data[i][2]).trim();
 
-    if (dbEmail === email && dbPassword === password) {
+    if (dbEmail === email && verifyPassword(password, dbPassword)) {
+      if (dbPassword.indexOf("v1$") !== 0) {
+        sheet.getRange(i + 1, 2).setValue(createPasswordRecord(password));
+      }
+
+      const user = {
+        id: i,
+        email: dbEmail,
+        name: dbName
+      };
 
       return ContentService
   .createTextOutput(JSON.stringify({
     success: true,
-    id: i,
-    email: dbEmail,
-    name: dbName
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    authToken: createSessionToken(user)
   }))
   .setMimeType(ContentService.MimeType.JSON);
     }
@@ -2974,6 +3262,30 @@ function getSucs() {
         row[emailCol]
     }));
 }
+
+function getAccounts() {
+  const sheet = getSheet("Accounts");
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const values = sheet.getDataRange().getDisplayValues();
+  const headers = values[0].map(header => String(header).trim().toLowerCase());
+  const nameColumn = ["name", "full name", "personnel name"]
+    .map(name => headers.indexOf(name))
+    .find(index => index !== -1);
+  const emailColumn = ["email", "email address", "username"]
+    .map(name => headers.indexOf(name))
+    .find(index => index !== -1);
+
+  if (emailColumn === undefined) return [];
+
+  return values.slice(1)
+    .map(row => ({
+      name: nameColumn === undefined ? "" : String(row[nameColumn] || "").trim(),
+      email: String(row[emailColumn] || "").trim()
+    }))
+    .filter(account => account.email);
+}
+
 function getOffices() {
   const sheet = getSheet("Offices");
 
@@ -3505,6 +3817,12 @@ function getNotifications() {
 
 }
 function assignPersonnel(body) {
+  return withMutationLock(function() {
+    return assignPersonnelUnlocked(body);
+  });
+}
+
+function assignPersonnelUnlocked(body) {
   try {
     const refNumber =
       String(body.refNumber || "").trim();
@@ -3516,7 +3834,8 @@ function assignPersonnel(body) {
       String(body.personnelName || "Personnel").trim();
 
     const sheetName =
-      body.sheet || SHEET_NAME;
+      getMutationSheetName(body.sheet);
+    validateEmailList(personnelEmail, "Personnel email");
 
     if (!refNumber || !personnelEmail) {
       return jsonResponse({

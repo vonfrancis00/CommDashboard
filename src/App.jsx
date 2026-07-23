@@ -1,18 +1,51 @@
-import { Component, useState, useEffect } from "react";
+import { Component, lazy, Suspense, useEffect, useState } from "react";
 
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
-import CommTrackDashboard from "./components/CommTrackDashboard";
-import Email from "./components/Email";
-import Replies from "./components/Replies";
-import UploadCommunication from "./components/UploadCommunication";
-import Report from "./components/Report";
 
-class ReportErrorBoundary extends Component {
+const CommTrackDashboard = lazy(() => import("./components/CommTrackDashboard"));
+const Email = lazy(() => import("./components/Email"));
+const Replies = lazy(() => import("./components/Replies"));
+const UploadCommunication = lazy(() => import("./components/UploadCommunication"));
+const Report = lazy(() => import("./components/Report"));
+
+function getActiveSession() {
+  try {
+    const savedUser = JSON.parse(localStorage.getItem("user"));
+    if (
+      !savedUser ||
+      !savedUser.authToken ||
+      savedUser.loginDate !== new Date().toDateString()
+    ) {
+      localStorage.removeItem("user");
+      return false;
+    }
+    return true;
+  } catch {
+    localStorage.removeItem("user");
+    return false;
+  }
+}
+
+function ViewLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50" role="status" aria-label="Loading page">
+      <div className="h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+    </div>
+  );
+}
+
+class ViewErrorBoundary extends Component {
   state = { error: null };
 
   static getDerivedStateFromError(error) {
     return { error };
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null });
+    }
   }
 
   render() {
@@ -20,9 +53,10 @@ class ReportErrorBoundary extends Component {
       return (
         <div className="min-h-screen bg-slate-50 p-6 sm:p-10">
           <div className="mx-auto max-w-2xl rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
-            <h1 className="text-xl font-bold text-slate-950">Reports could not be displayed</h1>
-            <p className="mt-2 text-sm text-slate-500">Refresh the page and try again. If the problem continues, the report data may be unavailable.</p>
+            <h1 className="text-xl font-bold text-slate-950">This page could not be displayed</h1>
+            <p className="mt-2 text-sm text-slate-500">Reload the page and try again.</p>
             <p className="mt-4 rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700">{this.state.error?.message}</p>
+            <button type="button" onClick={() => window.location.reload()} className="mt-5 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800">Reload page</button>
           </div>
         </div>
       );
@@ -33,74 +67,28 @@ class ReportErrorBoundary extends Component {
 
 export default function App() {
 
-  const [loggedIn, setLoggedIn] = useState(
-    !!localStorage.getItem("user")
-  );
+  const [loggedIn, setLoggedIn] = useState(getActiveSession);
 
   const [activeView, setActiveView] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
 
-  // ================================
-  // AUTO LOGOUT EVERY 12:00 MIDNIGHT
-  // ================================
   useEffect(() => {
-
-    const logoutAtMidnight = () => {
-      const now = new Date();
-
-      if (
-        now.getHours() === 0 &&
-        now.getMinutes() === 0
-      ) {
-        localStorage.removeItem("user");
-
-        setLoggedIn(false);
-
-        console.log("Session expired. Logged out.");
-      }
-    };
-
-
-    // check every 30 seconds
-    const timer = setInterval(
-      logoutAtMidnight,
-      30000
-    );
-
-
-    return () => clearInterval(timer);
-
-  }, []);
-
-
-
-  // ====================================
-  // CHECK IF USER WAS LOGGED IN YESTERDAY
-  // ====================================
-  useEffect(() => {
-
-    const savedUser = JSON.parse(
-      localStorage.getItem("user")
-    );
-
-
-    if (!savedUser) return;
-
-
-    const today =
-      new Date().toDateString();
-
-
-    if (savedUser.loginDate !== today) {
-
+    if (!loggedIn) return undefined;
+    const now = new Date();
+    const nextMidnight = new Date(now);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const timer = window.setTimeout(() => {
       localStorage.removeItem("user");
-
       setLoggedIn(false);
+    }, nextMidnight.getTime() - now.getTime());
+    return () => window.clearTimeout(timer);
+  }, [loggedIn]);
 
-    }
-
-
+  useEffect(() => {
+    const expireSession = () => setLoggedIn(false);
+    window.addEventListener("commtrack:session-expired", expireSession);
+    return () => window.removeEventListener("commtrack:session-expired", expireSession);
   }, []);
 
 
@@ -122,7 +110,7 @@ export default function App() {
 
       case "reports":
       case "report":
-        return <ReportErrorBoundary><Report /></ReportErrorBoundary>;
+        return <Report />;
 
       default:
         return <CommTrackDashboard />;
@@ -152,7 +140,11 @@ export default function App() {
 
       <main className={`min-h-screen w-full flex-1 pt-17 transition-[padding] duration-300 ease-in-out md:pt-0 ${sidebarCollapsed ? "md:pl-[88px]" : "md:pl-[280px]"}`}>
 
-        {renderView()}
+        <ViewErrorBoundary resetKey={activeView}>
+          <Suspense fallback={<ViewLoading />}>
+            {renderView()}
+          </Suspense>
+        </ViewErrorBoundary>
 
       </main>
 

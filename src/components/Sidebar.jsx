@@ -7,8 +7,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FileBarChart,
+  Plus,
   ReplyAll,
-  Send,
   Upload,
   X,
 } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 const menuItems = [
   { id: "dashboard", label: "Dashboard", description: "Overview & activity", icon: LayoutDashboard },
   { id: "replies", label: "Replies & Forwards", description: "Track responses", icon: ReplyAll },
-  { id: "create", label: "Create email", description: "Compose a message", icon: Send },
+  { id: "create", label: "Create email", description: "Compose a message", icon: Plus },
   { id: "upload", label: "Upload record", description: "Add communication", icon: Upload },
   { id: "reports", label: "Reports", description: "Insights & exports", icon: FileBarChart },
 ];

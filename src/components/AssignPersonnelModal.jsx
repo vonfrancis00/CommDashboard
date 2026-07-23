@@ -32,7 +32,7 @@ function normalizePersonnel(rows) {
 async function fetchPersonnel() {
   if (personnelRequest) return personnelRequest;
 
-  personnelRequest = request("", "GET", { sheet: "Accounts" })
+  personnelRequest = request("getAccounts", "GET")
     .then((rows) => {
       personnelCache = normalizePersonnel(rows);
       return personnelCache;

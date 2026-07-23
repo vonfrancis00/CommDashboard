@@ -13,6 +13,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { request } from "../services/api";
 
 const emptyModal = { open: false, type: "success", message: "" };
 
@@ -111,20 +112,13 @@ export default function Email({ setActiveView }) {
       const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
       const fullHtmlMessage = `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">${safeMessage}</div>`;
 
-      const response = await fetch(import.meta.env.VITE_EMAIL_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          to: to.trim(),
-          cc: cc.trim(),
-          subject: subject.trim(),
-          message: fullHtmlMessage,
-          attachments: attachmentData,
-        }),
+      await request("sendEmail", "POST", {
+        to: to.trim(),
+        cc: cc.trim(),
+        subject: subject.trim(),
+        message: fullHtmlMessage,
+        attachments: attachmentData,
       });
-
-      const result = await response.json();
-      if (!response.ok || !result.success) throw new Error(result.error || "The email service could not send your message.");
 
       resetComposer();
       setModal({ open: true, type: "success", message: "Your correspondence was delivered successfully." });
