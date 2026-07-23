@@ -44,6 +44,19 @@ function getSheet(sheetName) {
 
 }
 
+function invalidateDataCaches(sheetName) {
+  const cache = CacheService.getScriptCache();
+  const keys = [
+    "commtrack_data_" + (sheetName || SHEET_NAME)
+  ];
+
+  if ((sheetName || SHEET_NAME) === SHEET_NAME) {
+    keys.push("dashboard_fast");
+  }
+
+  cache.removeAll(keys);
+}
+
 /**
  * Appends an action to a two-column log sheet.
  * Expected headers: Message | Timestamp
@@ -169,6 +182,17 @@ function syncLatestReplies() {
     const recentThreads = GmailApp.search(query, 0, 100);
 
     let updatedRows = 0;
+    const changedRowIndexes = [];
+    const writableColumns = [
+      timeCol,
+      senderCol,
+      subjectCol,
+      messageCol,
+      typeCol,
+      linkCol
+    ].filter(column => column !== -1);
+    const firstWritableColumn = Math.min.apply(null, writableColumns);
+    const lastWritableColumn = Math.max.apply(null, writableColumns);
 
     recentThreads.forEach(thread => {
       const threadId = String(thread.getId()).trim();
@@ -212,54 +236,59 @@ function syncLatestReplies() {
           return;
         }
 
-        const sheetRow = rowIndex + 1;
+        data[rowIndex][timeCol] = latestDate;
+        if (senderCol !== -1) data[rowIndex][senderCol] = latestSender;
+        if (subjectCol !== -1) data[rowIndex][subjectCol] = latestSubject;
+        if (messageCol !== -1) data[rowIndex][messageCol] = latestBody;
+        if (typeCol !== -1) data[rowIndex][typeCol] = latestType;
+        if (linkCol !== -1) data[rowIndex][linkCol] = thread.getPermalink();
 
-        sheet
-          .getRange(sheetRow, timeCol + 1)
-          .setValue(latestDate);
-
-        if (senderCol !== -1) {
-          sheet
-            .getRange(sheetRow, senderCol + 1)
-            .setValue(latestSender);
-        }
-
-        if (subjectCol !== -1) {
-          sheet
-            .getRange(sheetRow, subjectCol + 1)
-            .setValue(latestSubject);
-        }
-
-        if (messageCol !== -1) {
-          sheet
-            .getRange(sheetRow, messageCol + 1)
-            .setValue(latestBody);
-        }
-
-        if (typeCol !== -1) {
-          sheet
-            .getRange(sheetRow, typeCol + 1)
-            .setValue(latestType);
-        }
-
-        if (linkCol !== -1) {
-          sheet
-            .getRange(sheetRow, linkCol + 1)
-            .setValue(thread.getPermalink());
-        }
-
+        changedRowIndexes.push(rowIndex);
         updatedRows++;
       });
     });
+
+    /*
+     * Write changed rows in contiguous blocks. This replaces as many as six
+     * setValue calls per row with one setValues call per block.
+     */
+    const uniqueRows = Array.from(new Set(changedRowIndexes))
+      .sort((first, second) => first - second);
+
+    for (let start = 0; start < uniqueRows.length;) {
+      let end = start;
+
+      while (
+        end + 1 < uniqueRows.length &&
+        uniqueRows[end + 1] === uniqueRows[end] + 1
+      ) {
+        end++;
+      }
+
+      const firstRowIndex = uniqueRows[start];
+      const lastRowIndex = uniqueRows[end];
+      const blockValues = data
+        .slice(firstRowIndex, lastRowIndex + 1)
+        .map(row =>
+          row.slice(firstWritableColumn, lastWritableColumn + 1)
+        );
+
+      sheet.getRange(
+        firstRowIndex + 1,
+        firstWritableColumn + 1,
+        blockValues.length,
+        lastWritableColumn - firstWritableColumn + 1
+      ).setValues(blockValues);
+
+      start = end + 1;
+    }
 
     properties.setProperty(
       "LAST_REPLY_SYNC_SECONDS",
       String(nowSeconds)
     );
 
-    CacheService
-      .getScriptCache()
-      .remove("commtrack_data_Notifications");
+    invalidateDataCaches("Notifications");
 
     Logger.log(
       `Reply synchronization complete. Updated rows: ${updatedRows}`
@@ -716,12 +745,7 @@ if (shouldSendEmail) {
 
 
 
-        CacheService
-          .getScriptCache()
-          .remove(
-            "commtrack_data_" +
-            sheetName
-          );
+        invalidateDataCaches(sheetName);
 
 
 
@@ -792,10 +816,7 @@ function saveRemarkTimeline(
     }
 
 
-    const ss =
-      SpreadsheetApp.openById(
-        SPREADSHEET_ID
-      );
+    const ss = getSS();
 
 
     let timelineSheet =
@@ -1423,7 +1444,7 @@ if (
       }
     }
     range.setValues(values);
-    CacheService.getScriptCache().remove("commtrack_data_" + sheetName);
+    invalidateDataCaches(sheetName);
     return jsonResponse({
       success:true,
       updated,
@@ -1645,7 +1666,7 @@ function deleteRecord(body) {
 
     sheet.deleteRow(deletedRow);
 
-    CacheService.getScriptCache().remove("commtrack_data_" + sheetName);
+    invalidateDataCaches(sheetName);
 
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -1742,7 +1763,7 @@ function deleteMultipleRecords(body) {
 
     }
 
-    CacheService.getScriptCache().remove("commtrack_data_" + sheetName);
+    invalidateDataCaches(sheetName);
 
     return ContentService.createTextOutput(JSON.stringify({
 
@@ -2392,6 +2413,8 @@ if (
   }
 }
 
+    invalidateDataCaches(sheetName);
+
     saveActionLog(
       "ForwardLogs",
       refNumber,
@@ -2713,7 +2736,7 @@ Gmail.Users.Messages.send(
 
 function getSUCList() {
   try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ss = getSS();
     const sheet = ss.getSheetByName("SUC");
 
     if (!sheet) {
@@ -2760,8 +2783,8 @@ function testGmailAuth() {
 }
 
 function clearCommTrackCache() {
-  CacheService.getScriptCache().remove("commtrack_data_Sheet1");
-  CacheService.getScriptCache().remove("commtrack_data_Notifications");
+  invalidateDataCaches(SHEET_NAME);
+  invalidateDataCaches("Notifications");
 }
 function login(body) {
   const sheet = getSheet("Credentials");
@@ -2869,7 +2892,7 @@ function getOriginalCc(body) {
 }
 function getSucs() {
 
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = getSS();
 
   const sheet = ss.getSheetByName("SUC");
 
@@ -3028,6 +3051,15 @@ function getTimeline(refNumber) {
 function getRecords() {
 
   try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = "commtrack_data_" + SHEET_NAME;
+    const cached = cache.get(cacheKey);
+
+    if (cached) {
+      return ContentService
+        .createTextOutput(cached)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     const sheet =
       getSheet(SHEET_NAME);
@@ -3085,10 +3117,14 @@ function getRecords() {
       });
 
 
+    const json = JSON.stringify(result);
+
+    if (json.length < 90000) {
+      cache.put(cacheKey, json, CACHE_SECONDS);
+    }
+
     return ContentService
-      .createTextOutput(
-        JSON.stringify(result)
-      )
+      .createTextOutput(json)
       .setMimeType(
         ContentService.MimeType.JSON
       );
@@ -3341,6 +3377,15 @@ function getDashboardData() {
 
 }
 function getNotifications() {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = "commtrack_data_Notifications";
+  const cached = cache.get(cacheKey);
+
+  if (cached) {
+    return ContentService
+      .createTextOutput(cached)
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   const sheet = getSheet("Notifications");
 
@@ -3393,9 +3438,15 @@ function getNotifications() {
     });
 
 
-  return jsonResponse(
-    result.reverse()
-  );
+  const json = JSON.stringify(result.reverse());
+
+  if (json.length < 90000) {
+    cache.put(cacheKey, json, CACHE_SECONDS);
+  }
+
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
 
 }
 function assignPersonnel(body) {
@@ -3840,6 +3891,8 @@ if (
       .setValue(sentAssignment.id);
   }
 }
+
+    invalidateDataCaches(sheetName);
 
     saveActionLog(
       "AssignedLogs",
