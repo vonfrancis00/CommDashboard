@@ -691,17 +691,18 @@ const result = await request(
     [executeDelete]
   );
   const executeMultipleDelete = async () => {
+  const refsToDelete = [...new Set(selectedRows.filter(Boolean))];
 
   showPopupLoading(
     "Deleting Records",
-    `Deleting ${selectedRows.length} selected records...`
+    `Deleting ${refsToDelete.length} selected records...`
   );
 
   try {
 
     const result = await request("deleteMultipleRecords", "POST", {
   sheet: "Sheet1",
-  refNumbers: selectedRows,
+  refNumbers: refsToDelete,
 });
 
     if (!result.success) {
@@ -709,8 +710,9 @@ const result = await request(
     }
 
     setSelectedRows([]);
-
-    lastSignatureRef.current = "";
+    setRows((prev) =>
+      prev.filter((row) => !refsToDelete.includes(row.refNumber))
+    );
 
     await fetchData(true);
 
@@ -718,7 +720,7 @@ const result = await request(
 
     showPopupSuccess(
       "Deleted",
-      "Selected records were deleted successfully."
+      `${result.deleted ?? refsToDelete.length} selected record(s) were deleted successfully.`
     );
 
   } catch (err) {

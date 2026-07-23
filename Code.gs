@@ -1688,106 +1688,109 @@ function deleteRecord(body) {
   }
 }
 function deleteMultipleRecords(body) {
-
   try {
-
     const refNumbers = body.refNumbers || [];
     const sheetName = body.sheet || SHEET_NAME;
 
     if (!Array.isArray(refNumbers) || !refNumbers.length) {
-
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
         error: "No selected records."
       })).setMimeType(ContentService.MimeType.JSON);
-
     }
 
     const sheet = getSheet(sheetName);
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: "Sheet not found."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: "No data found."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
-    const headers = data[0].map(String);
+    const headers = data[0].map(h => String(h).trim());
 
     const refCol = headers.indexOf("Ref number");
     const threadCol = headers.indexOf("Thread ID");
     const messageCol = headers.indexOf("Message ID");
 
     if (refCol === -1) {
-
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
         error: "Ref number column not found."
       })).setMimeType(ContentService.MimeType.JSON);
-
     }
 
     const selected = new Set(
       refNumbers.map(r => String(r).trim())
+        .filter(Boolean)
     );
 
-    let deleted = 0;
+    if (!selected.size) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: "No valid reference numbers were selected."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
-    for (let i = data.length - 1; i >= 1; i--) {
+    const rowNumbers = [];
 
+    for (let i = 1; i < data.length; i++) {
       const ref = String(data[i][refCol]).trim();
-
       if (!selected.has(ref)) continue;
 
       const rowValues = data[i];
+      rowNumbers.push(i + 1);
 
-      // Delete Drive files
       trashDriveFilesFromRow(rowValues, headers);
 
-      // Delete Gmail
       try {
-
         if (threadCol !== -1 && rowValues[threadCol]) {
-
           const thread = GmailApp.getThreadById(rowValues[threadCol]);
-
           if (thread) thread.moveToTrash();
-
         } else if (messageCol !== -1 && rowValues[messageCol]) {
-
           const msg = GmailApp.getMessageById(rowValues[messageCol]);
-
           if (msg) msg.getThread().moveToTrash();
-
         }
-
       } catch (e) {
-        Logger.log(e);
+        console.error("Gmail delete skipped for:", ref, e);
       }
+    }
 
-      sheet.deleteRow(i + 1);
-
-      deleted++;
-
+    // Delete consecutive rows in groups, from the bottom upward. This avoids
+    // shifting row indexes and greatly reduces Spreadsheet service calls.
+    for (let end = rowNumbers.length - 1; end >= 0;) {
+      let start = end;
+      while (
+        start > 0 &&
+        rowNumbers[start - 1] === rowNumbers[start] - 1
+      ) {
+        start--;
+      }
+      sheet.deleteRows(rowNumbers[start], end - start + 1);
+      end = start - 1;
     }
 
     invalidateDataCaches(sheetName);
 
     return ContentService.createTextOutput(JSON.stringify({
-
       success: true,
-
-      deleted
-
+      deleted: rowNumbers.length,
+      notFound: Math.max(0, selected.size - rowNumbers.length)
     })).setMimeType(ContentService.MimeType.JSON);
-
   } catch (err) {
-
     return ContentService.createTextOutput(JSON.stringify({
-
       success: false,
-
       error: err.toString()
-
     })).setMimeType(ContentService.MimeType.JSON);
-
   }
-
 }
 
 function splitEmails(value) {
