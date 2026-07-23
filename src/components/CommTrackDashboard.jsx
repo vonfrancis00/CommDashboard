@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useDebounce } from "use-debounce";
 import { request } from "../services/api";
 import ForwardModal from "../components/ForwardModal";
@@ -23,6 +24,8 @@ import {
   Send,
   Eye,
   UserRoundPlus,
+  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Area,
@@ -313,10 +316,20 @@ const openForwardModal = (refNumber) => {
 
     setIsAssigning(true);
     try {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const assignedTo = person.name || person.email;
       const result = await request("assignPersonnel", "POST", {
         refNumber: record.refNumber,
         personnelEmail: person.email,
         personnelName: person.name,
+        timelineEvent: "Assigned",
+        timelineDescription: `Assigned to ${assignedTo}`,
+        recipient: assignedTo,
+        timestamp: new Date().toISOString(),
+        updatedBy:
+          currentUser.name ||
+          currentUser.username ||
+          "Unknown User",
       });
       if (!result.success) throw new Error(result.error || "Assignment email failed");
 
@@ -745,12 +758,22 @@ const deleteMultipleRecords = () => {
     showPopupLoading("Forwarding Email", "Please wait while the email is being forwarded.");
 
     try {
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const recipient = forwardModal.to.trim();
       const result = await request("forwardRecord", "POST", {
-  refNumber: forwardModal.refNumber,
-  to: forwardModal.to,
-  subject: forwardModal.subject,
-  includeOriginalCc: forwardModal.includeOriginalCc,
-});
+        refNumber: forwardModal.refNumber,
+        to: recipient,
+        subject: forwardModal.subject,
+        includeOriginalCc: forwardModal.includeOriginalCc,
+        timelineEvent: "Forwarded",
+        timelineDescription: `Forwarded to ${recipient}`,
+        recipient,
+        timestamp: new Date().toISOString(),
+        updatedBy:
+          currentUser.name ||
+          currentUser.username ||
+          "Unknown User",
+      });
 
       if (!result.success) {
         throw new Error(result.error || "Forward failed");
@@ -1075,88 +1098,98 @@ const toggleSelectAll = () => {
     })
   }
 />
-{viewModal.isOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-6">
-    <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-      <div className="flex items-center justify-between border-b px-6 py-4">
-        <div>
-          <h2 className="font-black text-slate-800">
-            View Communication
-          </h2>
-
-          <p className="text-xs text-slate-400">
-            {viewModal.title}
-          </p>
+{viewModal.isOpen && createPortal(
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-[#07152f]/70 p-4 backdrop-blur-sm sm:p-6"
+    onMouseDown={(event) => {
+      if (event.target === event.currentTarget) {
+        setViewModal({ isOpen: false, link: "", title: "" });
+      }
+    }}
+  >
+    <div
+      className={`flex w-full flex-col overflow-hidden rounded-[28px] border border-white/60 bg-white shadow-[0_30px_90px_rgba(2,12,35,.35)] ${
+        viewModal.link.includes("mail.google.com")
+          ? "max-w-2xl"
+          : "h-[min(90vh,900px)] max-w-6xl"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0b2554] text-white shadow-lg shadow-blue-950/15">
+            <Mail className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-600">
+              Communication preview
+            </p>
+            <h2 className="mt-0.5 truncate text-base font-bold text-slate-900 sm:text-lg">
+              {viewModal.title || "View communication"}
+            </h2>
+          </div>
         </div>
 
         <button
+          type="button"
+          aria-label="Close communication preview"
           onClick={() =>
-            setViewModal({
-              isOpen: false,
-              link: "",
-              title: "",
-            })
+            setViewModal({ isOpen: false, link: "", title: "" })
           }
-          className="rounded-full bg-slate-100 p-2 hover:bg-red-100"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <X className="h-5 w-5 text-slate-500" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
-
       {viewModal.link.includes("mail.google.com") ? (
+        <div className="bg-slate-50 p-5 sm:p-8">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-blue-100/70 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-indigo-100/70 blur-3xl" />
 
-  <div className="flex h-full flex-col items-center justify-center gap-5">
+            <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-8 ring-blue-50/60">
+              <Mail className="h-8 w-8" />
+            </div>
 
-    <Mail className="h-20 w-20 text-indigo-500" />
+            <h3 className="relative mt-7 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Continue securely in Gmail
+            </h3>
+            <p className="relative mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+              Gmail protects messages from being displayed inside other websites.
+              Open this communication in a new tab to view it safely.
+            </p>
 
-    <h2 className="text-xl font-black text-slate-800">
-      Gmail communication cannot be previewed
-    </h2>
+            <button
+              type="button"
+              onClick={() => window.open(viewModal.link, "_blank", "noopener,noreferrer")}
+              className="relative mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:w-auto"
+            >
+              Open in Gmail
+              <ExternalLink className="h-4 w-4" />
+            </button>
 
-    <p className="text-sm text-slate-500">
-      Gmail blocks embedded previews for security.
-    </p>
-
-    <button
-      onClick={() =>
-        window.open(
-          viewModal.link,
-          "_blank"
-        )
-      }
-      className="
-        rounded-xl 
-        bg-indigo-600 
-        px-6 py-3 
-        text-sm 
-        font-bold 
-        text-white
-        hover:bg-indigo-700
-      "
-    >
-      Open in Gmail
-    </button>
-
-  </div>
-
-) : (
-
-  <iframe
-    src={
-      viewModal.link
-        ?.replace("/view", "/preview")
-        ?.replace("?usp=sharing", "")
-    }
-    title="Communication Viewer"
-    className="h-full w-full"
-  />
-
-)}
-
+            <div className="relative mt-6 flex items-center justify-center gap-2 text-xs font-medium text-slate-400">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              Opens the original message in a separate tab
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 bg-slate-100 p-2 sm:p-3">
+          <iframe
+            src={
+              viewModal.link
+                ?.replace("/view", "/preview")
+                ?.replace("?usp=sharing", "")
+            }
+            title={viewModal.title || "Communication Viewer"}
+            className="h-full w-full rounded-2xl border border-slate-200 bg-white"
+          />
+        </div>
+      )}
     </div>
-  </div>
+  </div>,
+  document.body
 )}
 
 

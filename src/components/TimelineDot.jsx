@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Clock3, CheckCircle2, Circle } from "lucide-react";
 
 // 1. Move static constants outside the component to prevent redeclaration on every render
@@ -10,6 +11,28 @@ const FINAL_STATUSES = [
   "meetings",
   "memorandums",
 ];
+
+function getTimelineLabel(item = {}) {
+  if (item.description || item.timelineDescription || item.message) {
+    return item.description || item.timelineDescription || item.message;
+  }
+
+  const event = item.event || item.timelineEvent || item.action;
+  const recipient = item.recipient || item.assignedTo || item.forwardedTo;
+  if (event && recipient) return `${event} to ${recipient}`;
+
+  return item.newStatus || item.status || event || "Activity updated";
+}
+
+function getActionType(item = {}, label = "") {
+  const value = String(
+    item.event || item.timelineEvent || item.action || label
+  ).trim().toLowerCase();
+
+  if (value.startsWith("forwarded")) return "forwarded";
+  if (value.startsWith("assigned")) return "assigned";
+  return "";
+}
 
 function formatTimelineDate(value) {
   if (!value) return "";
@@ -36,6 +59,8 @@ export default function TimelineDot({
   dateReceived,
   loading,
 }) {
+  const [selectedGroup, setSelectedGroup] = useState(null);
+
   // 2. Handle Escape key to close the modal (A11y)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -60,31 +85,64 @@ export default function TimelineDot({
     return { timeline: [], isCompletedProcess: false };
   }
 
-const compiledTimeline = [
-  {
-    status: data[0].oldStatus || "No Status",
+const initialStatus = data.find(item => item.oldStatus);
+
+const rawTimeline = [
+  ...(initialStatus ? [{
+    status: initialStatus.oldStatus,
     timestamp:
       formatTimelineDate(dateReceived) ||
       "Initial Status",
-
     user:
-      data[0].updatedBy ||
+      initialStatus.updatedBy ||
       "System",
-  },
+  }] : []),
 
-  ...data.map((item) => ({
-    status: item.newStatus,
+  ...data.map((item) => {
+    const status = getTimelineLabel(item);
 
-    timestamp:
+    return {
+      status,
+      actionType: getActionType(item, status),
+      timestamp:
       formatTimelineDate(
-        item.timestamp
+        item.timestamp || item.dateTime || item.createdAt
       ),
 
-    user:
-      item.updatedBy ||
+      user:
+      item.updatedBy || item.user ||
       "Unknown User",
-  })),
+    };
+  }),
 ];
+
+const compiledTimeline = rawTimeline.reduce((result, item) => {
+  if (!item.actionType) {
+    result.push(item);
+    return result;
+  }
+
+  const existing = result.find(
+    entry => entry.actionType === item.actionType
+  );
+
+  if (!existing) {
+    result.push({
+      ...item,
+      details: [item],
+    });
+    return result;
+  }
+
+  existing.details.push(item);
+  existing.status =
+    `${item.actionType === "forwarded" ? "Forwarded" : "Assigned"} ` +
+    `to ${existing.details.length} recipients`;
+  existing.timestamp =
+    existing.details[existing.details.length - 1].timestamp;
+  existing.user = "Multiple users";
+  return result;
+}, []);
 
   const latestStatus =
     compiledTimeline[
@@ -101,9 +159,9 @@ const compiledTimeline = [
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 animate-fade-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 sm:p-6 animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -190,6 +248,15 @@ const compiledTimeline = [
                           <p className="mt-1 text-[11px] font-bold text-indigo-500">
                             {item.user}
                           </p>
+                          {item.details?.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedGroup(item)}
+                              className="mt-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
+                            >
+                              See more
+                            </button>
+                          )}
                         </div>
                       )}
 
@@ -221,6 +288,15 @@ const compiledTimeline = [
                           <p className="mt-1 text-[11px] font-bold text-indigo-500">
                             {item.user}
                           </p>
+                          {item.details?.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedGroup(item)}
+                              className="mt-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline"
+                            >
+                              See more
+                            </button>
+                          )}
                         </div>
                       )}
 
@@ -242,8 +318,53 @@ const compiledTimeline = [
             </div>
           )}
         </div>
+
+        {selectedGroup && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-slate-900/40 p-5 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                    Complete history
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-slate-800">
+                    {selectedGroup.actionType === "forwarded"
+                      ? "Forwarded recipients"
+                      : "Assigned personnel"}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroup(null)}
+                  aria-label="Close complete history"
+                  className="rounded-xl bg-slate-50 p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+                {selectedGroup.details.map((detail, index) => (
+                  <div
+                    key={`${detail.status}-${detail.timestamp}-${index}`}
+                    className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+                  >
+                    <p className="text-sm font-bold text-slate-800">
+                      {detail.status}
+                    </p>
+                    <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs">
+                      <span className="text-slate-500">{detail.timestamp}</span>
+                      <span className="font-bold text-indigo-600">{detail.user}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
