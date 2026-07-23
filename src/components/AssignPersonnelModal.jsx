@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Search, UserRound, UserRoundCheck, X } from "lucide-react";
 import { request } from "../services/api";
 
-const PERSONNEL_CACHE_MS = 5 * 60 * 1000;
 let personnelCache = [];
-let personnelCacheTime = 0;
 let personnelRequest = null;
 
 function valueFrom(record, names) {
@@ -37,7 +35,6 @@ async function fetchPersonnel() {
   personnelRequest = request("", "GET", { sheet: "Accounts" })
     .then((rows) => {
       personnelCache = normalizePersonnel(rows);
-      personnelCacheTime = Date.now();
       return personnelCache;
     })
     .finally(() => {
@@ -74,8 +71,9 @@ export default function AssignPersonnelModal({ isOpen, record, onClose, onAssign
       setLoading(!hasCachedPersonnel);
 
       try {
-        const cacheIsFresh = Date.now() - personnelCacheTime < PERSONNEL_CACHE_MS;
-        const accounts = cacheIsFresh ? personnelCache : await fetchPersonnel();
+        // Always revalidate on open so edits to the Accounts sheet appear promptly.
+        // Cached entries remain visible while this request is in flight.
+        const accounts = await fetchPersonnel();
         if (!active) return;
         setPersonnel(accounts);
       } catch (err) {

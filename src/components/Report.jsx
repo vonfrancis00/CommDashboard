@@ -196,7 +196,7 @@ export default function Report() {
           <div className="report-print-header">
             <img src="/logo-dtms.png" alt="" />
             <div className="report-print-heading">
-              <p className="report-print-office">OFFICE OF THE CIVIL DEFENSE REGIONAL OFFICE III</p>
+              <p className="report-print-office">OFFICE OF COMMISSIONER DESIDERIO R. APAG III</p>
               <h1>COMMUNICATION TRACKING REPORT</h1>
               <p>CommTrack Records Management System</p>
             </div>

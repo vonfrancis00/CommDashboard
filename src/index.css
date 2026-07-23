@@ -14,7 +14,7 @@
 @media print {
   @page {
     size: A4 landscape;
-    margin: 13mm 14mm 17mm;
+    margin: 10mm;
   }
 
   body * {
@@ -46,8 +46,9 @@
   .report-print-sheet {
     display: block;
     position: static;
-    width: 269mm;
-    max-width: 100%;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 auto !important;
     color: #0f172a;
     background: white;
     font-family: Arial, sans-serif;
@@ -58,9 +59,10 @@
   .report-print-page {
     position: relative;
     box-sizing: border-box;
-    width: 100%;
-    height: 180mm;
-    padding-bottom: 9mm;
+    width: calc(100% - 8mm);
+    height: 190mm;
+    margin: 0 auto;
+    padding: 4mm 4mm 13mm;
     break-after: page;
     page-break-after: always;
     break-inside: avoid;
@@ -203,9 +205,9 @@
 
   .report-print-footer {
     position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    right: 4mm;
+    bottom: 4mm;
+    left: 4mm;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     gap: 16px;

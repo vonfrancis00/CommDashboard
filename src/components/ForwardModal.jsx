@@ -6,6 +6,7 @@ import {
   Mail,
   Users,
   CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 import { request } from "../services/api";
 
@@ -26,6 +27,8 @@ export default function ForwardModal({
   const [officeSearch, setOfficeSearch] = useState("");
   const [loadingSucs, setLoadingSucs] = useState(false);
   const [loadingOffices, setLoadingOffices] = useState(false);
+  const [showSucs, setShowSucs] = useState(false);
+  const [showOffices, setShowOffices] = useState(false);
 
 
   useEffect(() => {
@@ -74,6 +77,8 @@ export default function ForwardModal({
     setSelectedOffices([]);
     setSucSearch("");
     setOfficeSearch("");
+    setShowSucs(false);
+    setShowOffices(false);
   }
 }, [isOpen]);
   const resetModal = () => {
@@ -81,6 +86,8 @@ export default function ForwardModal({
   setSelectedOffices([]);
   setSucSearch("");
   setOfficeSearch("");
+  setShowSucs(false);
+  setShowOffices(false);
 
   setData({
     isOpen: false,
@@ -228,16 +235,30 @@ const handleClose = () => {
           </section>
           {/* SUC */}
           <section>
-            <div className="flex items-center justify-between">
-              <Label>
+            <button
+              type="button"
+              onClick={() => setShowSucs(open => !open)}
+              aria-expanded={showSucs}
+              aria-controls="suc-recipients"
+              className="mb-2 flex w-full items-center justify-between rounded-xl px-1 py-1 text-left hover:bg-slate-50"
+            >
+              <span className="text-xs font-black uppercase tracking-wider text-slate-400">
                 SUC Recipients
-              </Label>
-              <span className="text-xs font-bold text-indigo-500">
-                {selectedSucs.length} selected
               </span>
-            </div>
-            {/* SEARCH */}
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
+              <span className="flex items-center gap-2">
+                <span className="text-xs font-bold text-indigo-500">
+                  {selectedSucs.length} selected
+                </span>
+                <ChevronDown
+                  size={18}
+                  className={`text-slate-400 transition-transform ${showSucs ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            {showSucs && (
+              <div id="suc-recipients">
+                {/* SEARCH */}
+                <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
               <Search
                 size={16}
                 className="text-slate-400"
@@ -251,8 +272,8 @@ const handleClose = () => {
                 placeholder="Search SUC..."
                 className="flex-1 bg-transparent py-2 text-sm outline-none"
               />
-            </div>
-            <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
+                </div>
+                <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
               {/* {loadingSucs && (
                 <p className="text-center text-sm text-slate-400">
                   Loading recipients...
@@ -304,19 +325,35 @@ const handleClose = () => {
                   )}
                 </label>
               ))}
-            </div>
+                </div>
+              </div>
+            )}
           </section>
           {/* OFFICES */}
           <section>
-            <div className="flex items-center justify-between">
-              <Label>
-                Offices Recipients
-              </Label>
-              <span className="text-xs font-bold text-indigo-500">
-                {selectedOffices.length} selected
+            <button
+              type="button"
+              onClick={() => setShowOffices(open => !open)}
+              aria-expanded={showOffices}
+              aria-controls="office-recipients"
+              className="mb-2 flex w-full items-center justify-between rounded-xl px-1 py-1 text-left hover:bg-slate-50"
+            >
+              <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+                Office Recipients
               </span>
-            </div>
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
+              <span className="flex items-center gap-2">
+                <span className="text-xs font-bold text-indigo-500">
+                  {selectedOffices.length} selected
+                </span>
+                <ChevronDown
+                  size={18}
+                  className={`text-slate-400 transition-transform ${showOffices ? "rotate-180" : ""}`}
+                />
+              </span>
+            </button>
+            {showOffices && (
+              <div id="office-recipients">
+                <div className="mb-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3">
               <Search
                 size={16}
                 className="text-slate-400"
@@ -330,8 +367,8 @@ const handleClose = () => {
                 placeholder="Search office..."
                 className="flex-1 bg-transparent py-2 text-sm outline-none"
               />
-            </div>
-            <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
+                </div>
+                <div className="max-h-56 overflow-y-auto rounded-2xl bg-slate-50 p-3 space-y-2">
               {!loadingOffices &&
                filteredOffices.length === 0 && (
                 <p className="text-center text-sm text-slate-400">
@@ -378,7 +415,9 @@ const handleClose = () => {
                   )}
                 </label>
               ))}
-            </div>
+                </div>
+              </div>
+            )}
           </section>
           {/* SUBJECT */}
           <section>
