@@ -178,26 +178,31 @@ export default function Report() {
 
   return (
     <>
-    <div className="report-screen min-h-screen bg-slate-50 px-4 py-7 sm:px-7 lg:px-10 lg:py-9">
-      <div className="mx-auto max-w-[1500px]">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <div className="report-screen min-h-screen bg-[#f5f7fb]">
+      <header className="relative overflow-hidden bg-[#071d49] px-4 py-8 text-white sm:px-6 lg:px-8 lg:py-10">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:48px_48px]" />
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+        <div className="relative mx-auto flex max-w-[1600px] flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-blue-700"><FileBarChart size={16} /> Reporting center</div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Communication reports</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Review workload, status distribution, and monthly communication volume.</p>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200"><FileBarChart size={14} /> Reporting center</div>
+            <h1 className="text-3xl font-bold tracking-[-0.035em] text-white sm:text-4xl lg:text-[2.75rem]">Communication <span className="text-sky-300">Reports</span></h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100/65">Review workload, status distribution, and monthly communication volume.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <select aria-label="Filter by year" value={year} onChange={(e) => setYear(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
+            <select aria-label="Filter by year" value={year} onChange={(e) => setYear(e.target.value)} className="rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm outline-none backdrop-blur-sm focus:ring-2 focus:ring-sky-300 [&>option]:text-slate-800">
               <option value="All">All years</option>{years.map((item) => <option key={item}>{item}</option>)}
             </select>
-            <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} className="max-w-48 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
+            <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} className="max-w-48 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm outline-none backdrop-blur-sm focus:ring-2 focus:ring-sky-300 [&>option]:text-slate-800">
               <option value="All">All statuses</option>{statuses.map((item) => <option key={item}>{item}</option>)}
             </select>
-            <button onClick={() => load(true)} disabled={refreshing} className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition hover:bg-slate-100 disabled:opacity-50" aria-label="Refresh report"><RefreshCw size={19} className={refreshing ? "animate-spin" : ""} /></button>
-            <button onClick={() => window.print()} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:opacity-50"><Printer size={17} /> Print</button>
-            <button onClick={exportCsv} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50"><Download size={17} /> Export CSV</button>
+            <button onClick={() => load(true)} disabled={refreshing} className="rounded-xl border border-white/15 bg-white/10 p-2.5 text-blue-100 shadow-sm backdrop-blur-sm transition hover:bg-white/15 hover:text-white disabled:opacity-50" aria-label="Refresh report"><RefreshCw size={19} className={refreshing ? "animate-spin" : ""} /></button>
+            <button onClick={() => window.print()} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 disabled:opacity-50"><Printer size={17} /> Print</button>
+            <button onClick={exportCsv} disabled={!filtered.length} className="inline-flex items-center gap-2 rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-bold text-[#071d49] shadow-sm transition hover:bg-sky-300 disabled:opacity-50"><Download size={17} /> Export CSV</button>
           </div>
         </div>
+      </header>
+
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
 
         {error && <div className="mt-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700"><AlertCircle size={19} /> {error}</div>}
 

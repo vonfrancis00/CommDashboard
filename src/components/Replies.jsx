@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { request } from "../services/api";
+import QuickForwardModal from "./QuickForwardModal";
 import {
   ReplyAll,
   Forward,
@@ -24,6 +25,9 @@ export default function Replies() {
   const [acknowledging, setAcknowledging] = useState("");
   const [acknowledged, setAcknowledged] = useState(() => new Set());
   const [acknowledgeError, setAcknowledgeError] = useState({});
+  const [forwardModal, setForwardModal] = useState({ isOpen: false, record: null });
+  const [isForwarding, setIsForwarding] = useState(false);
+  const [forwardNotice, setForwardNotice] = useState(null);
 
   const fetchReplies = async () => {
 
@@ -85,6 +89,9 @@ export default function Replies() {
 
   const getMessage = (i) =>
     i?.Message || i?.message || i?.Body || "";
+
+  const getThreadId = (i) =>
+    String(i?.["Thread ID"] || i?.ThreadId || i?.threadId || "").trim();
 
   const getSenderEmail = (i) => {
     const raw = String(
@@ -152,6 +159,36 @@ export default function Replies() {
       }));
     } finally {
       setAcknowledging("");
+    }
+  };
+
+  const openForwardModal = (item) => {
+    setForwardNotice(null);
+    setForwardModal({
+      isOpen: true,
+      record: { ...item },
+    });
+  };
+
+  const forwardReply = async (person) => {
+    const record = forwardModal.record;
+    if (!record || !person?.email) return;
+    setIsForwarding(true);
+    setForwardNotice(null);
+    try {
+      const recipient = person.email.trim();
+      const result = await request("forwardReply", "POST", {
+        threadId: getThreadId(record),
+        to: recipient,
+      });
+      if (!result?.success) throw new Error(result?.error || "Forward failed.");
+      setForwardModal({ isOpen: false, record: null });
+      setForwardNotice({ type: "success", message: `The email was forwarded to ${person.name || recipient}.` });
+    } catch (err) {
+      setForwardModal({ isOpen: false, record: null });
+      setForwardNotice({ type: "error", message: err?.message || "Could not forward the email." });
+    } finally {
+      setIsForwarding(false);
     }
   };
 
@@ -299,6 +336,12 @@ export default function Replies() {
       </header>
 
       <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        {forwardNotice && (
+          <div role="status" className={`mb-5 flex items-center justify-between gap-4 rounded-2xl border p-4 text-sm font-bold ${forwardNotice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+            <span>{forwardNotice.message}</span>
+            <button type="button" onClick={() => setForwardNotice(null)} className="shrink-0 text-xs uppercase opacity-70 hover:opacity-100">Dismiss</button>
+          </div>
+        )}
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((n) => (
@@ -460,9 +503,17 @@ export default function Replies() {
                             <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
                           </button>
 
-                          <button className="h-10 w-10 flex items-center justify-center rounded-xl text-slate-300 hover:bg-slate-50 hover:text-slate-600 transition-colors">
-                            <MoreHorizontal className="h-5 w-5" />
-                          </button>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              aria-label="Forward communication"
+                              title="Forward communication"
+                              onClick={() => openForwardModal(item)}
+                              className="relative z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            >
+                              <MoreHorizontal className="h-5 w-5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -473,6 +524,14 @@ export default function Replies() {
           </div>
         )}
       </main>
+      {forwardModal.isOpen && (
+        <QuickForwardModal
+          isOpen
+          forwarding={isForwarding}
+          onClose={() => !isForwarding && setForwardModal({ isOpen: false, record: null })}
+          onForward={forwardReply}
+        />
+      )}
     </div>
   );
 }

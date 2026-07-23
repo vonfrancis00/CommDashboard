@@ -459,6 +459,9 @@ if (body.action === "updateMultipleRemarks") {
 if (body.action === "forwardRecord") {
   return forwardRecord(body);
 }
+if (body.action === "forwardReply") {
+  return forwardReply(body);
+}
 if (body.action === "assignPersonnel") {
   return assignPersonnel(body);
 }
@@ -1816,6 +1819,55 @@ function htmlEscape(text) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function forwardReply(body) {
+  try {
+    const threadId = String(body.threadId || "").trim();
+    const recipient = String(body.to || "").trim();
+
+    if (!threadId) {
+      return jsonResponse({
+        success: false,
+        error: "This notification does not have a Gmail Thread ID."
+      });
+    }
+
+    if (!recipient) {
+      return jsonResponse({
+        success: false,
+        error: "Missing forward recipient."
+      });
+    }
+
+    const thread = GmailApp.getThreadById(threadId);
+    if (!thread) {
+      return jsonResponse({
+        success: false,
+        error: "The Gmail thread could not be found."
+      });
+    }
+
+    const messages = thread.getMessages();
+    if (!messages.length) {
+      return jsonResponse({
+        success: false,
+        error: "The Gmail thread has no messages to forward."
+      });
+    }
+
+    messages[messages.length - 1].forward(recipient);
+
+    return jsonResponse({
+      success: true,
+      message: "Email forwarded successfully."
+    });
+  } catch (error) {
+    return jsonResponse({
+      success: false,
+      error: String(error)
+    });
+  }
 }
 
 function forwardRecord(body) {
